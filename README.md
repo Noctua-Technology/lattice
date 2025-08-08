@@ -143,7 +143,7 @@ Controllers support dependency injection using `@joist/di`. You can inject servi
 
 ```typescript
 import { inject } from '@joist/di';
-import { controller, get } from '@tcd/framework';
+import { controller, get } from '@noctuatech/lattice';
 
 import { UserService } from '#services/user.service.js';
 
@@ -167,8 +167,8 @@ export default class UserController {
 Create middleware controllers that apply to all routes:
 
 ```typescript
-import { controller, use } from '@tcd/framework';
-import { Context, Next } from 'hono';
+import { controller, use } from '@noctuatech/lattice';
+import type { Context, Next } from 'hono';
 
 @controller()
 export default class LoggerMiddleware {
@@ -247,13 +247,10 @@ export default class ApiController {
 Controllers can be easily tested using the framework's testing utilities:
 
 ```typescript
-import { assert } from 'chai';
-import { Hono } from 'hono';
-import { test } from 'node:test';
-
-import { HonoService } from '@tcd/framework';
-
+import { HonoService } from '@noctuatech/lattice';
 import { Injector } from '@joist/di';
+import { assert } from 'chai';
+import { test } from 'node:test';
 
 import UserController from './user.controller.js';
 

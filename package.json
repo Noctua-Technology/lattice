@@ -1,0 +1,51 @@
+{
+  "name": "@noctuatech/lattice",
+  "version": "1.0.0",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "main": "target/lib.js",
+  "exports": {
+    ".": "./target/lib.js"
+  },
+  "scripts": {
+    "build": "wireit",
+    "test": "wireit"
+  },
+  "wireit": {
+    "build": {
+      "command": "tsc --build --pretty",
+      "clean": "if-file-deleted",
+      "files": [
+        "src/**",
+        "tsconfig.json"
+      ],
+      "output": [
+        "target/**",
+        "tsconfig.tsbuildinfo"
+      ]
+    },
+    "test": {
+      "command": "node --test \"./target/**/*.test.js\"",
+      "dependencies": [
+        "build"
+      ]
+    }
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@joist/di": "^4.2.3",
+    "hono": "^4.6.16",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.2",
+    "@types/node": "^24.2.1",
+    "chai": "^5.2.1",
+    "prettier": "^3.6.2",
+    "prettier-plugin-organize-imports": "^4.2.0",
+    "typescript": "^5.9.2",
+    "wireit": "^0.14.12"
+  }
+}

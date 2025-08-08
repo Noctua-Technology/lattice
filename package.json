@@ -1,6 +1,6 @@
 {
   "name": "@noctuatech/lattice",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -9,6 +9,10 @@
   "exports": {
     ".": "./target/lib.js"
   },
+  "files": [
+    "src",
+    "target"
+  ],
   "scripts": {
     "build": "wireit",
     "test": "wireit"

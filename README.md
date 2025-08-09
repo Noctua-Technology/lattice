@@ -41,7 +41,7 @@ await app.serve();
 ### Controller with Base Path
 
 ```typescript
-import { controller, get, post } from '@tcd/framework';
+import { controller, get, post } from '@noctuatech/lattice';
 import type { Context } from 'hono';
 
 @controller('/api/users')

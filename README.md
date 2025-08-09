@@ -20,7 +20,7 @@ The Lattice framework provides a simple and powerful way to build web applicatio
 
 ```typescript
 // hello.controller.ts
-import { controller, get } from '@tcd/framework';
+import { controller, get } from '@noctuatech/lattice';
 import type { Context } from 'hono';
 
 @controller()

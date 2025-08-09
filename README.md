@@ -47,12 +47,12 @@ import type { Context } from 'hono';
 
 @controller('/api/users')
 export default class UserController {
-  @get('/')
+  @get()
   async getUsers(ctx: Context) {
     return ctx.json({ users: [] });
   }
 
-  @post('/')
+  @post()
   async createUser(ctx: Context) {
     const body = await ctx.req.json();
     return ctx.json({ user: body }, 201);
@@ -80,7 +80,7 @@ export default class ApiController {
 }
 ```
 
-### `@get(path, condition?)`
+### `@get(path?, condition?)`
 
 Registers a GET route handler.
 
@@ -118,7 +118,7 @@ async createUser(ctx: Context) {
 }
 ```
 
-### `@use(path, condition?)`
+### `@use(path?, condition?)`
 
 Registers middleware for the specified path pattern.
 

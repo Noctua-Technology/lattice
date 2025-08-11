@@ -25,15 +25,19 @@ test('it should find controllers and sort them so that all middleware are regist
 });
 
 test('it should use custom sort function from config', () => {
-  // Custom sort function that sorts controllers in reverse alphabetical order
-  const customSort = (paths: string[]) => {
-    return paths.toSorted((a, b) => b.localeCompare(a));
-  };
-
   const injector = new Injector({
     providers: [
       [HonoService, { use: Hono }],
-      [LATTICE_CONFIG, { factory: () => ({ manageControllers: customSort }) }],
+      [
+        LATTICE_CONFIG,
+        {
+          factory: () => ({
+            manageControllers(paths: string[]) {
+              return paths.toSorted((a, b) => b.localeCompare(a));
+            },
+          }),
+        },
+      ],
     ],
   });
 

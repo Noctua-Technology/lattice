@@ -9,7 +9,7 @@ import { FS } from './services.js';
 export interface AppConfig {
   glob?: string;
   port?: number;
-  manageControllers?: (paths: string[]) => string[];
+  transformPaths?: (paths: string[]) => string[];
 }
 
 export const LATTICE_CONFIG = new StaticToken<AppConfig>('APP_CONFIG', () => {
@@ -51,10 +51,10 @@ export class LatticeApp {
 
   findControllers(): string[] {
     const fs = this.#fs();
-    const { glob = '**/*.{controller,middleware}.js', manageControllers = sortControllers } =
+    const { glob = '**/*.{controller,middleware}.js', transformPaths = sortControllers } =
       this.#config();
 
-    return manageControllers(fs.globSync(path.join(process.cwd(), glob)));
+    return transformPaths(fs.globSync(path.join(process.cwd(), glob)));
   }
 }
 

@@ -32,7 +32,7 @@ test('it should use custom sort function from config', () => {
         LATTICE_CONFIG,
         {
           factory: () => ({
-            manageControllers(paths: string[]) {
+            transformPaths(paths: string[]) {
               return paths.toSorted((a, b) => b.localeCompare(a));
             },
           }),

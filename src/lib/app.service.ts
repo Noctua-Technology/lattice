@@ -1,10 +1,20 @@
 import { serve } from '@hono/node-server';
-import { inject, injectable, Injector } from '@joist/di';
+import { inject, injectable, Injector, StaticToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
 import { HonoService } from './hono.service.js';
-import { ENV, FS } from './services.js';
+import { FS } from './services.js';
+
+export interface AppConfig {
+  glob?: string;
+  port?: number;
+  manageControllers?: (paths: string[]) => string[];
+}
+
+export const LATTICE_CONFIG = new StaticToken<AppConfig>('APP_CONFIG', () => {
+  return {};
+});
 
 @injectable({
   name: 'LatticeApp',
@@ -13,16 +23,16 @@ export class LatticeApp {
   #fs = inject(FS);
   #injector = inject(Injector);
   #hono = inject(HonoService);
-  #env = inject(ENV);
+  #config = inject(LATTICE_CONFIG);
 
   async serve() {
-    const env = this.#env();
     const hono = this.#hono();
+    const { port = 8080 } = this.#config();
 
     await this.registerRoutes();
 
     return new Promise<AddressInfo>((resolve) => {
-      serve({ fetch: hono.fetch, port: Number(env.PORT) || 8080 }, resolve);
+      serve({ fetch: hono.fetch, port }, resolve);
     });
   }
 
@@ -41,10 +51,10 @@ export class LatticeApp {
 
   findControllers(): string[] {
     const fs = this.#fs();
+    const { glob = '**/*.{controller,middleware}.js', manageControllers = sortControllers } =
+      this.#config();
 
-    return sortControllers(
-      fs.globSync(path.join(process.cwd(), '**/*.{controller,middleware}.js'))
-    );
+    return manageControllers(fs.globSync(path.join(process.cwd(), glob)));
   }
 }
 

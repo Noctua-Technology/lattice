@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import test from 'node:test';
 import path from 'path';
 
-import { LatticeApp } from './app.service.js';
+import { LATTICE_CONFIG, LatticeApp } from './app.service.js';
 import { HonoService } from './hono.service.js';
 
 test('it should find controllers and sort them so that all middleware are registered first', () => {
@@ -21,6 +21,32 @@ test('it should find controllers and sort them so that all middleware are regist
     path.join(import.meta.dirname, '/mock/a.controller.js'),
     path.join(import.meta.dirname, '/mock/b.controller.js'),
     path.join(import.meta.dirname, '/mock/d.controller.js'),
+  ]);
+});
+
+test('it should use custom sort function from config', () => {
+  // Custom sort function that sorts controllers in reverse alphabetical order
+  const customSort = (paths: string[]) => {
+    return paths.toSorted((a, b) => b.localeCompare(a));
+  };
+
+  const injector = new Injector({
+    providers: [
+      [HonoService, { use: Hono }],
+      [LATTICE_CONFIG, { factory: () => ({ manageControllers: customSort }) }],
+    ],
+  });
+
+  const app = injector.inject(LatticeApp);
+
+  const controllers = app.findControllers();
+
+  // With custom reverse alphabetical sort, expect: d.controller, c.middleware, b.controller, a.controller
+  assert.deepEqual(controllers, [
+    path.join(import.meta.dirname, '/mock/d.controller.js'),
+    path.join(import.meta.dirname, '/mock/c.middleware.js'),
+    path.join(import.meta.dirname, '/mock/b.controller.js'),
+    path.join(import.meta.dirname, '/mock/a.controller.js'),
   ]);
 });
 

@@ -16,6 +16,7 @@
 
 import { serve } from '@hono/node-server';
 import { inject, injectable, Injector, StaticToken } from '@joist/di';
+import type { MiddlewareHandler } from 'hono';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
@@ -26,6 +27,7 @@ export interface AppConfig {
   glob?: string;
   port?: number;
   transformPaths?: (paths: string[]) => string[];
+  middleware?: MiddlewareHandler[];
 }
 
 export const LATTICE_CONFIG = new StaticToken<AppConfig>('APP_CONFIG', () => {
@@ -54,7 +56,14 @@ export class LatticeApp {
 
   async registerRoutes() {
     const injector = this.#injector();
+    const hono = this.#hono();
     const controllerPaths = this.findControllers();
+
+    const { middleware = [] } = this.#config();
+
+    for (const m of middleware) {
+      hono.use(m);
+    }
 
     const controllers = await Promise.all(
       controllerPaths.map((file) => import(file).then((m) => m.default))

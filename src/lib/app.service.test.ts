@@ -16,7 +16,7 @@
 
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import suite from 'node:test';
 import path from 'path';
 
@@ -106,5 +106,43 @@ suite('app.service', async (ctx) => {
       assert.deepEqual(await response.json(), { message: `Controller ${path}` });
       assert.strictEqual(response.headers.get('middleware-c'), 'active');
     }
+  });
+
+  await ctx.test('it should accept middleware via config', async () => {
+    const m1: MiddlewareHandler = async (c, next) => {
+      c.header('x-m1', '1');
+      await next();
+    };
+
+    const m2: MiddlewareHandler = async (c, next) => {
+      c.header('x-m2', '2');
+      await next();
+    };
+
+    const injector = new Injector({
+      providers: [
+        [HonoService, { use: Hono }],
+        [
+          LATTICE_CONFIG,
+          {
+            factory: () => ({
+              middleware: [m1, m2],
+            }),
+          },
+        ],
+      ],
+    });
+
+    const app = injector.inject(LatticeApp);
+    const hono = injector.inject(HonoService);
+
+    await app.registerRoutes();
+
+    const resp = await hono.request('/a');
+
+    assert.strictEqual(resp.status, 200);
+    assert.deepEqual(await resp.json(), { message: 'Controller /a' });
+    assert.strictEqual(resp.headers.get('x-m1'), '1');
+    assert.strictEqual(resp.headers.get('x-m2'), '2');
   });
 });

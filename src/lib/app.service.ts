@@ -23,7 +23,7 @@ import { HonoService } from './hono.service.js';
 import { FS } from './services.js';
 
 export interface AppConfig {
-  glob?: string;
+  globs?: string[];
   port?: number;
   transformPaths?: (paths: string[]) => string[];
 }
@@ -67,10 +67,14 @@ export class LatticeApp {
 
   findControllers(): string[] {
     const fs = this.#fs();
-    const { glob = '**/*.{controller,middleware}.js', transformPaths = sortControllers } =
-      this.#config();
+    const {
+      globs = [path.join(process.cwd(), '**/*.{controller,middleware}.js')],
+      transformPaths = sortControllers,
+    } = this.#config();
 
-    return transformPaths(fs.globSync(path.join(process.cwd(), glob)));
+    const paths = globs.flatMap((glob) => fs.globSync(glob));
+
+    return transformPaths(paths);
   }
 }
 

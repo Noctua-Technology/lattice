@@ -33,7 +33,7 @@ suite('app.service', async (ctx) => {
 
       const app = injector.inject(LatticeApp);
 
-      const controllers = app.findControllers();
+      const controllers = app.findControllers(process.cwd());
 
       assert.deepEqual(controllers, [
         path.join(import.meta.dirname, '/mock/c.middleware.js'),
@@ -63,7 +63,7 @@ suite('app.service', async (ctx) => {
 
     const app = injector.inject(LatticeApp);
 
-    const controllers = app.findControllers();
+    const controllers = app.findControllers(process.cwd());
 
     // With custom reverse alphabetical sort, expect: d.controller, c.middleware, b.controller, a.controller
     assert.deepEqual(controllers, [
@@ -82,7 +82,7 @@ suite('app.service', async (ctx) => {
     const app = injector.inject(LatticeApp);
     const hono = injector.inject(HonoService);
 
-    await app.registerRoutes();
+    await app.registerRoutes(process.cwd());
 
     assert.deepEqual(
       hono.routes.map((r) => `${r.method} ${r.path}`),
@@ -98,7 +98,7 @@ suite('app.service', async (ctx) => {
     const app = injector.inject(LatticeApp);
     const hono = injector.inject(HonoService);
 
-    await app.registerRoutes();
+    await app.registerRoutes(process.cwd());
 
     for (const path of ['/a', '/b', '/d']) {
       const response = await hono.request(path);

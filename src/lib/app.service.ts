@@ -41,20 +41,20 @@ export class LatticeApp {
   #hono = inject(HonoService);
   #config = inject(LATTICE_CONFIG);
 
-  async serve() {
+  async serve(dir = process.cwd()) {
     const hono = this.#hono();
     const { port = 8080 } = this.#config();
 
-    await this.registerRoutes();
+    await this.registerRoutes(dir);
 
     return new Promise<AddressInfo>((resolve) => {
       serve({ fetch: hono.fetch, port }, resolve);
     });
   }
 
-  async registerRoutes() {
+  async registerRoutes(dir: string) {
     const injector = this.#injector();
-    const controllerPaths = this.findControllers();
+    const controllerPaths = this.findControllers(dir);
 
     const controllers = await Promise.all(
       controllerPaths.map((file) => import(file).then((m) => m.default))
@@ -65,7 +65,7 @@ export class LatticeApp {
     }
   }
 
-  findControllers(dir = process.cwd()): string[] {
+  findControllers(dir: string): string[] {
     const fs = this.#fs();
     const {
       globs = [path.join(dir, '**/*.{controller,middleware}.js')],

@@ -65,10 +65,10 @@ export class LatticeApp {
     }
   }
 
-  findControllers(): string[] {
+  findControllers(dir = process.cwd()): string[] {
     const fs = this.#fs();
     const {
-      globs = [path.join(process.cwd(), '**/*.{controller,middleware}.js')],
+      globs = [path.join(dir, '**/*.{controller,middleware}.js')],
       transformPaths = sortControllers,
     } = this.#config();
 

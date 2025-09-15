@@ -20,7 +20,7 @@ import { Hono } from 'hono';
 import suite from 'node:test';
 import path from 'path';
 
-import { LATTICE_CONFIG, LatticeApp } from './app.service.js';
+import { LatticeApp } from './app.service.js';
 import { HonoService } from './hono.service.js';
 
 suite('app.service', async (ctx) => {
@@ -33,7 +33,7 @@ suite('app.service', async (ctx) => {
 
       const app = injector.inject(LatticeApp);
 
-      const controllers = app.findControllers(process.cwd());
+      const controllers = app.findControllers();
 
       assert.deepEqual(controllers, [
         path.join(import.meta.dirname, '/mock/c.middleware.js'),
@@ -46,24 +46,16 @@ suite('app.service', async (ctx) => {
 
   await ctx.test('it should use custom sort function from config', () => {
     const injector = new Injector({
-      providers: [
-        [HonoService, { use: Hono }],
-        [
-          LATTICE_CONFIG,
-          {
-            factory: () => ({
-              transformPaths(paths: string[]) {
-                return paths.toSorted((a, b) => b.localeCompare(a));
-              },
-            }),
-          },
-        ],
-      ],
+      providers: [[HonoService, { use: Hono }]],
     });
 
     const app = injector.inject(LatticeApp);
 
-    const controllers = app.findControllers(process.cwd());
+    app.config.transformPaths = (paths: string[]) => {
+      return paths.toSorted((a, b) => b.localeCompare(a));
+    };
+
+    const controllers = app.findControllers();
 
     // With custom reverse alphabetical sort, expect: d.controller, c.middleware, b.controller, a.controller
     assert.deepEqual(controllers, [
@@ -82,7 +74,7 @@ suite('app.service', async (ctx) => {
     const app = injector.inject(LatticeApp);
     const hono = injector.inject(HonoService);
 
-    await app.registerRoutes(process.cwd());
+    await app.registerRoutes();
 
     assert.deepEqual(
       hono.routes.map((r) => `${r.method} ${r.path}`),
@@ -98,7 +90,7 @@ suite('app.service', async (ctx) => {
     const app = injector.inject(LatticeApp);
     const hono = injector.inject(HonoService);
 
-    await app.registerRoutes(process.cwd());
+    await app.registerRoutes();
 
     for (const path of ['/a', '/b', '/d']) {
       const response = await hono.request(path);

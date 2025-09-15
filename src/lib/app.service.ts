@@ -15,7 +15,7 @@
  */
 
 import { serve } from '@hono/node-server';
-import { inject, injectable, Injector, StaticToken } from '@joist/di';
+import { inject, injectable, Injector } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
@@ -23,14 +23,11 @@ import { HonoService } from './hono.service.js';
 import { FS } from './services.js';
 
 export interface AppConfig {
+  dir?: string;
   globs?: string[];
   port?: number;
   transformPaths?: (paths: string[]) => string[];
 }
-
-export const LATTICE_CONFIG = new StaticToken<AppConfig>('APP_CONFIG', () => {
-  return {};
-});
 
 @injectable({
   name: 'LatticeApp',
@@ -39,22 +36,24 @@ export class LatticeApp {
   #fs = inject(FS);
   #injector = inject(Injector);
   #hono = inject(HonoService);
-  #config = inject(LATTICE_CONFIG);
 
-  async serve(dir = process.cwd()) {
+  config: AppConfig = {};
+
+  async serve(config: AppConfig = {}) {
+    this.config = config;
+
     const hono = this.#hono();
-    const { port = 8080 } = this.#config();
 
-    await this.registerRoutes(dir);
+    await this.registerRoutes();
 
     return new Promise<AddressInfo>((resolve) => {
-      serve({ fetch: hono.fetch, port }, resolve);
+      serve({ fetch: hono.fetch, port: this.config.port ?? 8080 }, resolve);
     });
   }
 
-  async registerRoutes(dir: string) {
+  async registerRoutes() {
     const injector = this.#injector();
-    const controllerPaths = this.findControllers(dir);
+    const controllerPaths = this.findControllers();
 
     const controllers = await Promise.all(
       controllerPaths.map((file) => import(file).then((m) => m.default))
@@ -65,12 +64,15 @@ export class LatticeApp {
     }
   }
 
-  findControllers(dir: string): string[] {
+  findControllers(): string[] {
     const fs = this.#fs();
+
+    const { dir = process.cwd() } = this.config;
+
     const {
       globs = [path.join(dir, '**/*.{controller,middleware}.js')],
       transformPaths = sortControllers,
-    } = this.#config();
+    } = this.config;
 
     const paths = globs.flatMap((glob) => fs.globSync(glob));
 

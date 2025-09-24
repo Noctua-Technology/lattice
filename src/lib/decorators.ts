@@ -53,6 +53,34 @@ export function post<T extends string, This extends object>(
   };
 }
 
+export function put<T extends string, This extends object>(
+  path?: T,
+  condition?: LifeCycleCondition
+) {
+  return function getDecorator(target: Handler<any, T, any>, ctx: ClassMethodDecoratorContext) {
+    return created(condition)(function (this: This, injector) {
+      const hono = injector.inject(HonoService);
+      const basePath = injector.inject(BASE_PATH);
+
+      hono.put<T>(join(basePath, path ?? '') as T, target.bind(this));
+    }, ctx);
+  };
+}
+
+export function del<T extends string, This extends object>(
+  path?: T,
+  condition?: LifeCycleCondition
+) {
+  return function getDecorator(target: Handler<any, T, any>, ctx: ClassMethodDecoratorContext) {
+    return created(condition)(function (this: This, injector) {
+      const hono = injector.inject(HonoService);
+      const basePath = injector.inject(BASE_PATH);
+
+      hono.delete<T>(join(basePath, path ?? '') as T, target.bind(this));
+    }, ctx);
+  };
+}
+
 export function use<T extends string, This extends object>(
   path?: T,
   condition?: LifeCycleCondition

@@ -19,7 +19,7 @@ import { assert } from 'chai';
 import type { Context, Next } from 'hono';
 import suite from 'node:test';
 
-import { controller, get, post, use } from './decorators.js';
+import { controller, del, get, post, put, use } from './decorators.js';
 import { HonoService } from './hono.service.js';
 
 suite('decorators', async (ctx) => {
@@ -70,6 +70,57 @@ suite('decorators', async (ctx) => {
 
     assert.strictEqual(res.status, 200);
     assert.deepEqual(await res.json(), { message: 'test from post' });
+  });
+
+  await ctx.test('put', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller()
+    class Controller {
+      @put('/test')
+      async test(ctx: Context) {
+        const body = await ctx.req.json();
+
+        return ctx.json({ updated: true, ...body });
+      }
+    }
+
+    const instance = injector.inject(Controller);
+
+    assert.instanceOf(instance, Controller);
+
+    const res = await hono.request('/test', {
+      method: 'PUT',
+      body: JSON.stringify({ id: 1, name: 'updated' }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { updated: true, id: 1, name: 'updated' });
+  });
+
+  await ctx.test('del', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller()
+    class Controller {
+      @del('/test')
+      async test(ctx: Context) {
+        return ctx.json({ deleted: true });
+      }
+    }
+
+    const instance = injector.inject(Controller);
+
+    assert.instanceOf(instance, Controller);
+
+    const res = await hono.request('/test', {
+      method: 'DELETE',
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { deleted: true });
   });
 
   await ctx.test('use', async () => {

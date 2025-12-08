@@ -15,7 +15,7 @@
  */
 
 import { serve } from '@hono/node-server';
-import { inject, injectable, Injector } from '@joist/di';
+import { inject, injectable, Injector, type InjectionToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
@@ -49,6 +49,20 @@ export class LatticeApp {
     return new Promise<AddressInfo>((resolve) => {
       serve({ fetch: hono.fetch, port: this.config.port ?? 8080 }, resolve);
     });
+  }
+
+  async register(m: string | InjectionToken<unknown>) {
+    const injector = this.#injector();
+
+    let controller: InjectionToken<unknown>;
+
+    if (typeof m === 'string') {
+      controller = await import(m).then((m) => m.default);
+    } else {
+      controller = m;
+    }
+
+    injector.inject(controller);
   }
 
   async registerRoutes() {

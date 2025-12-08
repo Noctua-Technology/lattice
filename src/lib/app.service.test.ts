@@ -99,4 +99,41 @@ suite('app.service', async (ctx) => {
       assert.strictEqual(response.headers.get('middleware-c'), 'active');
     }
   });
+
+  await ctx.test('it should register a controller from a string path', async () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+
+    await app.register(path.join(import.meta.dirname, '/mock/a.controller.js'));
+
+    const hono = injector.inject(HonoService);
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['GET /a']
+    );
+  });
+
+  await ctx.test('it should register a controller from an InjectionToken', async () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+
+    const { default: ControllerA } = await import(
+      path.join(import.meta.dirname, '/mock/a.controller.js')
+    );
+
+    await app.register(ControllerA);
+
+    const hono = injector.inject(HonoService);
+
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['GET /a']
+    );
+  });
 });

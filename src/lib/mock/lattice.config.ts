@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-export * from '#lib/lib/app.service.js';
-export * from '#lib/lib/config.service.js';
-export * from '#lib/lib/decorators.js';
-export * from '#lib/lib/hono.service.js';
+const config = {
+  port: 3000,
+};
+
+export default config;

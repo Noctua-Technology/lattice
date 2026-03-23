@@ -19,20 +19,15 @@ import { inject, injectable, Injector, type InjectionToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
-import { HonoService } from './hono.service.js';
-import { FS } from './services.js';
-
-export interface AppConfig {
-  dir?: string;
-  globs?: string[];
-  port?: number;
-  transformPaths?: (paths: string[]) => string[];
-}
+import { LatticeConfigService, type AppConfig } from '#lib/config.service.js';
+import { HonoService } from '#lib/hono.service.js';
+import { FS } from '#lib/services.js';
 
 @injectable({
   name: 'LatticeApp',
 })
 export class LatticeApp {
+  #config = inject(LatticeConfigService);
   #fs = inject(FS);
   #injector = inject(Injector);
   #hono = inject(HonoService);
@@ -40,9 +35,12 @@ export class LatticeApp {
   config: AppConfig = {};
 
   async serve(config: AppConfig = {}) {
-    this.config = config;
-
+    const configService = this.#config();
     const hono = this.#hono();
+
+    const loadedConfig = await configService.load(config.dir);
+
+    this.config = { ...config, ...loadedConfig };
 
     await this.registerRoutes();
 

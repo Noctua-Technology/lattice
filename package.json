@@ -6,6 +6,11 @@
   "license": "ISC",
   "type": "module",
   "main": "target/lib.js",
+  "imports": {
+    "#*": {
+      "default": "./target/*"
+    }
+  },
   "exports": {
     ".": "./target/lib.js"
   },
@@ -39,8 +44,10 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@noctuatech/result": "^1.1.0",
     "hono": "^4.6.16",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "zod": "^4.1.5"
   },
   "peerDependencies": {
     "@joist/di": "^4.2.4-next.18"

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-export * from '#lib/lib/app.service.js';
-export * from '#lib/lib/config.service.js';
-export * from '#lib/lib/decorators.js';
-export * from '#lib/lib/hono.service.js';
+export * from '#lib/app.service.js';
+export * from '#lib/config.service.js';
+export * from '#lib/decorators.js';
+export * from '#lib/hono.service.js';

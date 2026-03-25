@@ -19,33 +19,28 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { FS } from '#lib/services.js';
-import { Result } from '@noctuatech/result';
 
 export const CONFIG_FILE_NAMES = ['lattice.config.json', 'lattice.config.js'];
 
-const AppConfig = z
-  .object({
-    dir: z.string().optional(),
-    globs: z.array(z.string()).optional(),
-    port: z.number().int().min(1).max(65535).optional(),
-    transformPaths: z
-      .function({ input: [z.array(z.string())], output: z.array(z.string()) })
-      .optional(),
-  })
-  .strict();
+export const AppConfig = z.looseObject({
+  dir: z.string().optional(),
+  globs: z.array(z.string()).optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  transformPaths: z
+    .function({ input: [z.array(z.string())], output: z.array(z.string()) })
+    .optional(),
+});
 
 export type AppConfig = z.infer<typeof AppConfig>;
 
 function validateConfig(value: unknown, filePath: string): AppConfig {
-  return Result.wrap(() => {
-    const result = AppConfig.safeParse(value);
+  const result = AppConfig.safeParse(value);
 
-    if (!result.success) {
-      throw new Error(`Invalid lattice config at ${filePath}: ${result.error.message}`);
-    }
+  if (!result.success) {
+    throw new Error(`Invalid lattice config at ${filePath}: ${result.error.message}`);
+  }
 
-    return result.data;
-  }).unwrapOr({});
+  return result.data;
 }
 
 @injectable({
@@ -101,13 +96,13 @@ export class LatticeConfigService {
 
   /**
    * Locates the nearest config file from `dir` and returns its parsed
-   * contents, or `null` if no config file is found.
+   * contents, or an empty object if no config file is found.
    */
-  async load(dir: string = process.cwd()): Promise<AppConfig | null> {
+  async load(dir: string = process.cwd()): Promise<AppConfig> {
     const configPath = this.findConfigFile(dir);
 
     if (!configPath) {
-      return null;
+      return {};
     }
 
     return this.readConfig(configPath);

@@ -215,36 +215,36 @@ describe('config.service', () => {
     }
   });
 
-  it('readConfig should throw when JS config has unknown keys', async () => {
+  it('readConfig should allow JS config with unknown keys', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-test-'));
 
     try {
       const configPath = path.join(tmpDir, 'lattice.config.js');
-      fs.writeFileSync(configPath, 'export default { port: 3000, invalid: true };');
+      fs.writeFileSync(
+        configPath,
+        'export default { port: 3000, appName: "my-app", featureFlags: { beta: true } };'
+      );
 
       const service = new Injector().inject(LatticeConfigService);
-      let error: unknown;
+      const config = await service.readConfig(configPath);
 
-      try {
-        await service.readConfig(configPath);
-      } catch (e) {
-        error = e;
-      }
-
-      assert.instanceOf(error, Error);
-      assert.match((error as Error).message, /Invalid lattice config/);
+      assert.deepEqual(config, {
+        port: 3000,
+        appName: 'my-app',
+        featureFlags: { beta: true },
+      });
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
     }
   });
 
-  it('load should return null when no config file is found', async () => {
+  it('load should return an empty object when no config file is found', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-test-'));
 
     try {
       const service = new Injector().inject(LatticeConfigService);
 
-      assert.isNull(await service.load(tmpDir));
+      assert.deepEqual(await service.load(tmpDir), {});
     } finally {
       fs.rmSync(tmpDir, { recursive: true });
     }

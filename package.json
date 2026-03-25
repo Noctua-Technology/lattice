@@ -31,7 +31,7 @@
       ]
     },
     "test": {
-      "command": "node --test \"./target/**/*.test.js\"",
+      "command": "node --enable-source-maps --test \"./target/**/*.test.js\"",
       "dependencies": [
         "build"
       ]
@@ -52,7 +52,7 @@
     "chai": "^6.0.0",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.2",
     "wireit": "^0.14.12"
   }
 }

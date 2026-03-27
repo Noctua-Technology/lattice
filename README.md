@@ -253,7 +253,7 @@ import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import { test } from 'node:test';
 
-import UserController from './user.controller.js';
+import UserController from '#lib/user.controller.js';
 
 test('UserController', async () => {
   const testbed = new Injector();

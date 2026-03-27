@@ -17,34 +17,31 @@
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import { Hono } from 'hono';
-import suite from 'node:test';
-import path from 'path';
+import path from 'node:path';
+import { describe, it } from 'node:test';
 
-import { LatticeApp } from './app.service.js';
-import { HonoService } from './hono.service.js';
+import { LatticeApp } from '#lib/app.service.js';
+import { HonoService } from '#lib/hono.service.js';
 
-suite('app.service', async (ctx) => {
-  await ctx.test(
-    'it should find controllers and sort them so that all middleware are registered first',
-    () => {
-      const injector = new Injector({
-        providers: [[HonoService, { use: Hono }]],
-      });
+describe('app.service', () => {
+  it('should find controllers and sort them so that all middleware are registered first', () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
 
-      const app = injector.inject(LatticeApp);
+    const app = injector.inject(LatticeApp);
 
-      const controllers = app.findControllers();
+    const controllers = app.findControllers();
 
-      assert.deepEqual(controllers, [
-        path.join(import.meta.dirname, '/mock/c.middleware.js'),
-        path.join(import.meta.dirname, '/mock/a.controller.js'),
-        path.join(import.meta.dirname, '/mock/b.controller.js'),
-        path.join(import.meta.dirname, '/mock/d.controller.js'),
-      ]);
-    }
-  );
+    assert.deepEqual(controllers, [
+      path.join(import.meta.dirname, '/mock/c.middleware.js'),
+      path.join(import.meta.dirname, '/mock/a.controller.js'),
+      path.join(import.meta.dirname, '/mock/b.controller.js'),
+      path.join(import.meta.dirname, '/mock/d.controller.js'),
+    ]);
+  });
 
-  await ctx.test('it should use custom sort function from config', () => {
+  it('should use custom sort function from config', () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
@@ -66,7 +63,7 @@ suite('app.service', async (ctx) => {
     ]);
   });
 
-  await ctx.test('it should register controllers and middleware', async () => {
+  it('should register controllers and middleware', async () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
@@ -82,7 +79,7 @@ suite('app.service', async (ctx) => {
     );
   });
 
-  await ctx.test('it should handle HTTP requests with correct responses and headers', async () => {
+  it('should handle HTTP requests with correct responses and headers', async () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
@@ -100,7 +97,7 @@ suite('app.service', async (ctx) => {
     }
   });
 
-  await ctx.test('it should register a controller from a string path', async () => {
+  it('should register a controller from a string path', async () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
@@ -116,7 +113,7 @@ suite('app.service', async (ctx) => {
     );
   });
 
-  await ctx.test('it should register a controller from an InjectionToken', async () => {
+  it('should register a controller from an InjectionToken', async () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });

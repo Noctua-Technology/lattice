@@ -17,13 +17,13 @@
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import type { Context, Next } from 'hono';
-import suite from 'node:test';
+import { describe, it } from 'node:test';
 
-import { controller, del, get, post, put, use } from './decorators.js';
-import { HonoService } from './hono.service.js';
+import { controller, del, get, post, put, use } from '#lib/decorators.js';
+import { HonoService } from '#lib/hono.service.js';
 
-suite('decorators', async (ctx) => {
-  await ctx.test('get', async () => {
+describe('decorators', () => {
+  it('get', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);
 
@@ -45,7 +45,7 @@ suite('decorators', async (ctx) => {
     assert.deepEqual(await res.json(), { message: 'test' });
   });
 
-  await ctx.test('post', async () => {
+  it('post', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);
 
@@ -72,7 +72,7 @@ suite('decorators', async (ctx) => {
     assert.deepEqual(await res.json(), { message: 'test from post' });
   });
 
-  await ctx.test('put', async () => {
+  it('put', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);
 
@@ -99,7 +99,7 @@ suite('decorators', async (ctx) => {
     assert.deepEqual(await res.json(), { updated: true, id: 1, name: 'updated' });
   });
 
-  await ctx.test('del', async () => {
+  it('del', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);
 
@@ -123,7 +123,7 @@ suite('decorators', async (ctx) => {
     assert.deepEqual(await res.json(), { deleted: true });
   });
 
-  await ctx.test('use', async () => {
+  it('use', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);
 

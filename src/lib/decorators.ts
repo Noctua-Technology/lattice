@@ -19,7 +19,7 @@ import type { InjectorOpts } from '@joist/di/injector.js';
 import type { Handler } from 'hono';
 import { join } from 'node:path';
 
-import { HonoService } from './hono.service.js';
+import { HonoService } from '#lib/hono.service.js';
 
 type LifeCycleCondition = Parameters<typeof created>[0];
 

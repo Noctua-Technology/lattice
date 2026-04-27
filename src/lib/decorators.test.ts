@@ -17,12 +17,71 @@
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import type { Context, Next } from 'hono';
+import type { AddressInfo } from 'node:net';
 import { describe, it } from 'node:test';
 
 import { controller, del, get, post, put, use } from '#lib/decorators.js';
 import { HonoService } from '#lib/hono.service.js';
+import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
+
+class TestHttpServer implements HttpServer {
+  routes: string[] = [];
+
+  get(path: string, _handler: HttpHandler) {
+    this.routes.push(`GET ${path}`);
+  }
+
+  post(path: string, _handler: HttpHandler) {
+    this.routes.push(`POST ${path}`);
+  }
+
+  put(path: string, _handler: HttpHandler) {
+    this.routes.push(`PUT ${path}`);
+  }
+
+  delete(path: string, _handler: HttpHandler) {
+    this.routes.push(`DELETE ${path}`);
+  }
+
+  use(path: string, _handler: HttpHandler) {
+    this.routes.push(`USE ${path}`);
+  }
+
+  listen(port: number) {
+    return Promise.resolve({
+      address: '127.0.0.1',
+      family: 'IPv4',
+      port,
+    } satisfies AddressInfo);
+  }
+}
 
 describe('decorators', () => {
+  it('registers routes against the configured http server token', () => {
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: TestHttpServer }]],
+    });
+    const httpServer = injector.inject(HTTP_SERVER);
+
+    if (!(httpServer instanceof TestHttpServer)) {
+      throw new Error('expected TestHttpServer to be resolved from HTTP_SERVER');
+    }
+
+    @controller('/api')
+    class Controller {
+      @use('*')
+      middleware() {}
+
+      @get('/items')
+      list() {}
+    }
+
+    const instance = injector.inject(Controller);
+
+    assert.instanceOf(instance, Controller);
+    assert.deepEqual(httpServer.routes, ['USE /api/*', 'GET /api/items']);
+  });
+
   it('get', async () => {
     const injector = new Injector();
     const hono = injector.inject(HonoService);

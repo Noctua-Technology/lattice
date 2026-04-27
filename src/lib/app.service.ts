@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-import { serve } from '@hono/node-server';
 import { inject, injectable, Injector, type InjectionToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
 import { LatticeConfigService, type AppConfig } from '#lib/config.service.js';
-import { HonoService } from '#lib/hono.service.js';
+import { HTTP_SERVER } from '#lib/http.service.js';
 import { FS } from '#lib/services.js';
 
 @injectable({
@@ -29,14 +28,14 @@ import { FS } from '#lib/services.js';
 export class LatticeApp {
   #config = inject(LatticeConfigService);
   #fs = inject(FS);
+  #httpServer = inject(HTTP_SERVER);
   #injector = inject(Injector);
-  #hono = inject(HonoService);
 
   config: AppConfig = {};
 
   async serve(config: AppConfig = {}) {
     const configService = this.#config();
-    const hono = this.#hono();
+    const httpServer = this.#httpServer();
 
     const loadedConfig = await configService.load(config.dir);
 
@@ -44,9 +43,7 @@ export class LatticeApp {
 
     await this.registerRoutes();
 
-    return new Promise<AddressInfo>((resolve) => {
-      serve({ fetch: hono.fetch, port: this.config.port ?? 8080 }, resolve);
-    });
+    return httpServer.listen(this.config.port ?? 8080) as Promise<AddressInfo>;
   }
 
   async register(m: string | InjectionToken<unknown>) {

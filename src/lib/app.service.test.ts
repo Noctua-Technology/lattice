@@ -17,13 +17,71 @@
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import { Hono } from 'hono';
+import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import { LatticeApp } from '#lib/app.service.js';
 import { HonoService } from '#lib/hono.service.js';
+import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
+
+class TestHttpServer implements HttpServer {
+  listenPort?: number;
+  routes: string[] = [];
+
+  get(path: string, _handler: HttpHandler) {
+    this.routes.push(`GET ${path}`);
+  }
+
+  post(path: string, _handler: HttpHandler) {
+    this.routes.push(`POST ${path}`);
+  }
+
+  put(path: string, _handler: HttpHandler) {
+    this.routes.push(`PUT ${path}`);
+  }
+
+  delete(path: string, _handler: HttpHandler) {
+    this.routes.push(`DELETE ${path}`);
+  }
+
+  use(path: string, _handler: HttpHandler) {
+    this.routes.push(`USE ${path}`);
+  }
+
+  listen(port: number) {
+    this.listenPort = port;
+
+    return Promise.resolve({
+      address: '127.0.0.1',
+      family: 'IPv4',
+      port,
+    } satisfies AddressInfo);
+  }
+}
 
 describe('app.service', () => {
+  it('should support a custom http server implementation', async () => {
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: TestHttpServer }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    const httpServer = injector.inject(HTTP_SERVER) as TestHttpServer;
+
+    await app.registerRoutes();
+
+    assert.deepEqual(httpServer.routes, ['USE *', 'GET /a', 'GET /b', 'GET /d']);
+
+    const address = await app.serve({
+      dir: path.join(import.meta.dirname, '/__fixtures_does_not_exist__'),
+      port: 9090,
+    });
+
+    assert.strictEqual(httpServer.listenPort, 9090);
+    assert.strictEqual(address.port, 9090);
+  });
+
   it('should find controllers and sort them so that all middleware are registered first', () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],

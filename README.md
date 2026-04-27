@@ -1,10 +1,10 @@
 # @noctuatech/lattice
 
-A lightweight web framework built on top of Hono with dependency injection and decorator-based routing.
+A lightweight web framework with dependency injection and decorator-based routing. Hono is the default HTTP server, but the routing layer can be backed by your own server implementation.
 
 ## Overview
 
-The Lattice framework provides a simple and powerful way to build web applications using TypeScript decorators and dependency injection. It's built on top of Hono for fast, lightweight HTTP handling.
+The Lattice framework provides a simple way to build web applications using TypeScript decorators and dependency injection. It ships with a Hono-based server out of the box and exposes an HTTP server contract that you can replace when you need a different runtime or framework.
 
 ## Core Features
 
@@ -12,6 +12,7 @@ The Lattice framework provides a simple and powerful way to build web applicatio
 - **Dependency injection** - Built-in DI support using `@joist/di`
 - **Automatic route registration** - Controllers are automatically discovered and registered
 - **Middleware support** - Easy middleware integration with `@use` decorator
+- **Custom server support** - Swap out the default Hono server by providing your own `HTTP_SERVER`
 - **TypeScript-first** - Full TypeScript support with type safety
 
 ## Quick Start
@@ -34,9 +35,54 @@ export default class HelloController {
 
 // main.ts
 const root = new Injector();
-const app = root.inject(AppService);
+const app = root.inject(LatticeApp);
 
 await app.serve();
+```
+
+### Custom HTTP Server
+
+```typescript
+import { Injector, injectable } from '@joist/di';
+import type { AddressInfo } from 'node:net';
+
+import { HTTP_SERVER, LatticeApp, type HttpHandler, type HttpServer } from '@noctuatech/lattice';
+
+@injectable()
+class CustomHttpServer implements HttpServer {
+  get(path: string, handler: HttpHandler) {
+    // register GET handler with your server
+  }
+
+  post(path: string, handler: HttpHandler) {
+    // register POST handler with your server
+  }
+
+  put(path: string, handler: HttpHandler) {
+    // register PUT handler with your server
+  }
+
+  delete(path: string, handler: HttpHandler) {
+    // register DELETE handler with your server
+  }
+
+  use(path: string, handler: HttpHandler) {
+    // register middleware with your server
+  }
+
+  listen(port: number): Promise<AddressInfo> {
+    // start your server and return the bound address
+    throw new Error('not implemented');
+  }
+}
+
+const root = new Injector({
+  providers: [[HTTP_SERVER, { use: CustomHttpServer }]],
+});
+
+const app = root.inject(LatticeApp);
+
+await app.serve({ port: 8080 });
 ```
 
 ### Controller with Base Path

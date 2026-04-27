@@ -14,29 +14,22 @@
  * limitations under the License.
  */
 
-import { serve } from '@hono/node-server';
-import { injectable } from '@joist/di';
-import { Hono } from 'hono';
-import { compress } from 'hono/compress';
-import { trimTrailingSlash } from 'hono/trailing-slash';
+import { StaticToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 
-import type { HttpServer } from '#lib/http.service.js';
+import { HonoService } from '#lib/hono.service.js';
 
-@injectable({
-  name: 'HonoService',
-})
-export class HonoService extends Hono implements HttpServer {
-  constructor() {
-    super({});
+export type HttpHandler = (...args: any[]) => unknown;
 
-    this.use(compress());
-    this.use(trimTrailingSlash());
-  }
-
-  listen(port: number) {
-    return new Promise<AddressInfo>((resolve) => {
-      serve({ fetch: this.fetch, port }, resolve);
-    });
-  }
+export interface HttpServer {
+  get(path: string, handler: HttpHandler): unknown;
+  post(path: string, handler: HttpHandler): unknown;
+  put(path: string, handler: HttpHandler): unknown;
+  delete(path: string, handler: HttpHandler): unknown;
+  use(path: string, handler: HttpHandler): unknown;
+  listen(port: number): Promise<AddressInfo> | AddressInfo;
 }
+
+export const HTTP_SERVER = new StaticToken<HttpServer>('HTTP_SERVER', (injector) => {
+  return injector.inject(HonoService);
+});

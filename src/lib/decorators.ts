@@ -16,6 +16,7 @@
 
 import { StaticToken, created, injectable } from '@joist/di';
 import type { InjectorOpts } from '@joist/di/injector.js';
+import type { Context, Next } from 'hono';
 import { join } from 'node:path';
 
 import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
@@ -24,6 +25,15 @@ type LifeCycleCondition = Parameters<typeof created>[0];
 type RouteMethod = keyof Pick<HttpServer, 'delete' | 'get' | 'post' | 'put' | 'use'>;
 
 const BASE_PATH = new StaticToken<string>('BASE_PATH', () => '');
+
+export interface Middleware {
+  middleware(ctx: Context, next: Next): unknown;
+}
+
+export type MiddlewareClass = new (...args: any[]) => Middleware;
+
+const controllerMiddlewareMap = new WeakMap<object, MiddlewareClass[]>();
+const routeMiddlewareMap = new WeakMap<object, MiddlewareClass[]>();
 
 function route(method: RouteMethod) {
   return function registerRoute<T extends string, This extends object>(
@@ -35,7 +45,32 @@ function route(method: RouteMethod) {
         const httpServer = injector.inject(HTTP_SERVER);
         const basePath = injector.inject(BASE_PATH);
 
-        httpServer[method](join(basePath, path ?? '') as T, target.bind(this));
+        const controllerMiddlewares: MiddlewareClass[] = [];
+
+        let currentClass = this.constructor;
+
+        while (currentClass && currentClass !== Object.prototype) {
+          const mws = controllerMiddlewareMap.get(currentClass);
+          if (mws) {
+            controllerMiddlewares.push(...mws);
+          }
+          currentClass = Object.getPrototypeOf(currentClass);
+        }
+
+        const routeMiddlewares = routeMiddlewareMap.get(target) || [];
+
+        const allMiddlewares = [...controllerMiddlewares, ...routeMiddlewares];
+        const resolvedHandlers: HttpHandler[] = [];
+
+        for (const mw of allMiddlewares) {
+          const instance = injector.inject(mw);
+          resolvedHandlers.push(instance.middleware.bind(instance));
+        }
+
+        resolvedHandlers.push(target.bind(this));
+
+        const routePath = join(basePath, path ?? '') as T;
+        httpServer[method](routePath, ...resolvedHandlers);
       }, ctx);
     };
   };
@@ -45,7 +80,28 @@ export const get = route('get');
 export const post = route('post');
 export const put = route('put');
 export const del = route('delete');
-export const use = route('use');
+
+export function use(path: string, condition?: LifeCycleCondition): any;
+export function use(...middlewares: MiddlewareClass[]): any;
+export function use(...args: any[]) {
+  if (typeof args[0] === 'string') {
+    const path = args[0];
+    const condition = args[1] as LifeCycleCondition | undefined;
+    return route('use')(path, condition);
+  }
+
+  return function (value: any, context: ClassDecoratorContext | ClassMethodDecoratorContext) {
+    if (context.kind === 'class') {
+      const existing = controllerMiddlewareMap.get(value) || [];
+      controllerMiddlewareMap.set(value, [...args, ...existing]);
+    } else if (context.kind === 'method') {
+      const existing = routeMiddlewareMap.get(value) || [];
+      routeMiddlewareMap.set(value, [...args, ...existing]);
+    } else {
+      throw new Error('@use decorator can only be used on classes or methods');
+    }
+  };
+}
 
 export function controller(path?: string, opts?: InjectorOpts) {
   const providers = opts?.providers ?? [];

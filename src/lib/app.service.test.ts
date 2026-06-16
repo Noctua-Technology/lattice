@@ -29,23 +29,23 @@ class TestHttpServer implements HttpServer {
   listenPort?: number;
   routes: string[] = [];
 
-  get(path: string, _handler: HttpHandler) {
+  get(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`GET ${path}`);
   }
 
-  post(path: string, _handler: HttpHandler) {
+  post(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`POST ${path}`);
   }
 
-  put(path: string, _handler: HttpHandler) {
+  put(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`PUT ${path}`);
   }
 
-  delete(path: string, _handler: HttpHandler) {
+  delete(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`DELETE ${path}`);
   }
 
-  use(path: string, _handler: HttpHandler) {
+  use(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`USE ${path}`);
   }
 

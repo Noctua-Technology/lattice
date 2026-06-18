@@ -45,25 +45,28 @@ function route(method: RouteMethod) {
         const httpServer = injector.inject(HTTP_SERVER);
         const basePath = injector.inject(BASE_PATH);
 
-        const controllerMiddlewares: MiddlewareClass[] = [];
+        const controllerMiddleware: MiddlewareClass[] = [];
 
         let currentClass = this.constructor;
 
         while (currentClass && currentClass !== Object.prototype) {
           const mws = controllerMiddlewareMap.get(currentClass);
+
           if (mws) {
-            controllerMiddlewares.push(...mws);
+            controllerMiddleware.push(...mws);
           }
+
           currentClass = Object.getPrototypeOf(currentClass);
         }
 
         const routeMiddlewares = routeMiddlewareMap.get(target) || [];
 
-        const allMiddlewares = [...controllerMiddlewares, ...routeMiddlewares];
+        const allMiddleware = [...controllerMiddleware, ...routeMiddlewares];
         const resolvedHandlers: HttpHandler[] = [];
 
-        for (const mw of allMiddlewares) {
+        for (const mw of allMiddleware) {
           const instance = injector.inject(mw);
+
           resolvedHandlers.push(instance.middleware.bind(instance));
         }
 

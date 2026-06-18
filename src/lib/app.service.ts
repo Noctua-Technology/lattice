@@ -46,6 +46,11 @@ export class LatticeApp {
     return httpServer.listen(this.config.port ?? 8080) as Promise<AddressInfo>;
   }
 
+  async close() {
+    const httpServer = this.#httpServer();
+    await httpServer.close();
+  }
+
   async register(m: string | InjectionToken<unknown>) {
     const injector = this.#injector();
 

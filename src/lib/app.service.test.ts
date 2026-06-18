@@ -58,6 +58,10 @@ class TestHttpServer implements HttpServer {
       port,
     } satisfies AddressInfo);
   }
+
+  close() {
+    return Promise.resolve();
+  }
 }
 
 describe('app.service', () => {
@@ -190,5 +194,43 @@ describe('app.service', () => {
       hono.routes.map((r) => `${r.method} ${r.path}`),
       ['GET /a']
     );
+  });
+
+  it('should call close on the HTTP server when LatticeApp.close is invoked', async () => {
+    let closed = false;
+    class CustomHttpServer extends TestHttpServer {
+      override close() {
+        closed = true;
+        return Promise.resolve();
+      }
+    }
+
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: CustomHttpServer }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    await app.serve({
+      dir: path.join(import.meta.dirname, '/__fixtures_does_not_exist__'),
+      port: 9091,
+    });
+
+    await app.close();
+    assert.isTrue(closed);
+  });
+
+  it('HonoService should gracefully close the server if active, or resolve if not', async () => {
+    const injector = new Injector();
+    const honoService = injector.inject(HonoService);
+
+    // Call close when not listening yet
+    await honoService.close(); // should resolve cleanly
+
+    // Listen on a random port
+    const address = await honoService.listen(0);
+    assert.isNotNull(address.port);
+
+    // Close it gracefully
+    await honoService.close();
   });
 });

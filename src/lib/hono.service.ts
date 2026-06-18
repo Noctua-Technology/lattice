@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { serve } from '@hono/node-server';
+import { serve, type ServerType } from '@hono/node-server';
 import { injectable } from '@joist/di';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
@@ -27,6 +27,8 @@ import type { HttpServer } from '#lib/http.service.js';
   name: 'HonoService',
 })
 export class HonoService extends Hono implements HttpServer {
+  #server?: ServerType;
+
   constructor() {
     super({});
 
@@ -34,9 +36,25 @@ export class HonoService extends Hono implements HttpServer {
     this.use(trimTrailingSlash());
   }
 
-  listen(port: number) {
+  async listen(port: number) {
     return new Promise<AddressInfo>((resolve) => {
-      serve({ fetch: this.fetch, port }, resolve);
+      this.#server = serve({ fetch: this.fetch, port }, resolve);
+    });
+  }
+
+  async close(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (!this.#server) {
+        resolve();
+      } else {
+        this.#server.close((err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      }
     });
   }
 }

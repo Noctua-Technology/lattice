@@ -28,6 +28,7 @@ export interface HttpServer {
   delete(path: string, ...handlers: HttpHandler[]): unknown;
   use(path: string, ...handlers: HttpHandler[]): unknown;
   listen(port: number): Promise<AddressInfo> | AddressInfo;
+  close(): Promise<void>;
 }
 
 export const HTTP_SERVER = new StaticToken<HttpServer>('HTTP_SERVER', (injector) => {

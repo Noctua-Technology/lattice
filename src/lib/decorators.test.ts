@@ -54,6 +54,10 @@ class TestHttpServer implements HttpServer {
       port,
     } satisfies AddressInfo);
   }
+
+  close() {
+    return Promise.resolve();
+  }
 }
 
 describe('decorators', () => {
@@ -283,8 +287,7 @@ describe('decorators', () => {
     }
 
     @controller('/multi-mw')
-    @use(ControllerMw1)
-    @use(ControllerMw2)
+    @use(ControllerMw1, ControllerMw2)
     class Controller {
       @get('/test')
       @use(RouteMw)

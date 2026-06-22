@@ -20,7 +20,17 @@ import type { Context, Next } from 'hono';
 import type { AddressInfo } from 'node:net';
 import { describe, it } from 'node:test';
 
-import { controller, del, get, patch, post, put, use, type Middleware } from '#lib/decorators.js';
+import {
+  controller,
+  del,
+  get,
+  patch,
+  post,
+  put,
+  readMetadata,
+  use,
+  type Middleware,
+} from '#lib/decorators.js';
 import { HonoService } from '#lib/hono.service.js';
 import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
 
@@ -394,6 +404,14 @@ describe('decorators', () => {
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.headers.get('content-type'), 'text/plain;charset=UTF-8');
       assert.strictEqual(await res.text(), '42');
+    });
+
+    it('readMetadata should safely handle null, undefined, and non-object inputs', () => {
+      assert.isNull(readMetadata(null));
+      assert.isNull(readMetadata(undefined));
+      assert.isNull(readMetadata(42));
+      assert.isNull(readMetadata('string'));
+      assert.isNull(readMetadata({}));
     });
   });
 });

@@ -17,7 +17,9 @@
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
 import { Hono } from 'hono';
+import fs from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -255,5 +257,36 @@ describe('app.service', () => {
 
     // Close it gracefully
     await honoService.close();
+  });
+
+  it('should throw a descriptive error when a controller has no default export', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-loader-test-'));
+    const invalidControllerPath = path.join(tempDir, 'invalid.controller.js');
+    
+    // Write a file with no default export
+    fs.writeFileSync(invalidControllerPath, 'export const foo = "bar";');
+
+    try {
+      const injector = new Injector({
+        providers: [[HonoService, { use: Hono }]],
+      });
+
+      const app = injector.inject(LatticeApp);
+      app.config.dir = tempDir;
+      
+      let error: any;
+      try {
+        await app.registerRoutes();
+      } catch (err: any) {
+        error = err;
+      }
+
+      assert.isDefined(error);
+      assert.instanceOf(error, Error);
+      assert.match(error.message, /Failed to load controller or middleware at/);
+      assert.match(error.message, /Module has no default export/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

@@ -71,7 +71,19 @@ export class LatticeApp {
     const controllerPaths = this.findControllers();
 
     const controllers = await Promise.all(
-      controllerPaths.map((file) => import(file).then((m) => m.default))
+      controllerPaths.map(async (file) => {
+        try {
+          const m = await import(file);
+          if (!m || !m.default) {
+            throw new Error('Module has no default export.');
+          }
+          return m.default;
+        } catch (err: any) {
+          throw new Error(`Failed to load controller or middleware at "${file}": ${err.message}`, {
+            cause: err,
+          });
+        }
+      })
     );
 
     controllers.sort((a, b) => {

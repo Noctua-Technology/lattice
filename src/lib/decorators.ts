@@ -17,7 +17,7 @@
 import { StaticToken, created, injectable } from '@joist/di';
 import type { InjectorOpts } from '@joist/di/injector.js';
 import type { Context, Next } from 'hono';
-import { join } from 'node:path';
+import { posix } from 'node:path';
 
 import { HTTP_SERVER, type HttpHandler } from '#lib/http.service.js';
 
@@ -96,7 +96,7 @@ function route(method: RouteMethod) {
           });
         }
 
-        const routePath = join(basePath, path ?? '') as T;
+        const routePath = posix.join(basePath, path ?? '') as T;
         httpServer[method](routePath, ...resolvedHandlers);
       }, ctx);
     };
@@ -135,8 +135,8 @@ interface ControllerOpts extends InjectorOpts {
   weight?: number | undefined;
 }
 
-export function readMetadata<T>(target: object): ControllerOpts | null {
-  if (Symbol.metadata in target) {
+export function readMetadata<T>(target: unknown): ControllerOpts | null {
+  if (target && (typeof target === 'object' || typeof target === 'function') && Symbol.metadata in target) {
     const metadata = target[Symbol.metadata];
 
     return metadata as ControllerOpts;

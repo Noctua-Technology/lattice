@@ -17,8 +17,6 @@
 import { serve, type ServerType } from '@hono/node-server';
 import { injectable } from '@joist/di';
 import { Hono } from 'hono';
-import { compress } from 'hono/compress';
-import { trimTrailingSlash } from 'hono/trailing-slash';
 import type { AddressInfo } from 'node:net';
 
 import type { HttpServer } from '#lib/http.service.js';
@@ -28,13 +26,6 @@ import type { HttpServer } from '#lib/http.service.js';
 })
 export class HonoService extends Hono implements HttpServer {
   #server?: ServerType;
-
-  constructor() {
-    super({});
-
-    this.use(compress());
-    this.use(trimTrailingSlash());
-  }
 
   async listen(port: number) {
     return new Promise<AddressInfo>((resolve) => {

@@ -41,6 +41,10 @@ class TestHttpServer implements HttpServer {
     this.routes.push(`PUT ${path}`);
   }
 
+  patch(path: string, ..._handlers: HttpHandler[]) {
+    this.routes.push(`PATCH ${path}`);
+  }
+
   delete(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`DELETE ${path}`);
   }
@@ -71,6 +75,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const httpServer = injector.inject(HTTP_SERVER) as TestHttpServer;
 
     await app.registerRoutes();
@@ -92,6 +97,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
 
     const controllers = app.findControllers();
 
@@ -103,12 +109,27 @@ describe('app.service', () => {
     ]);
   });
 
+  it('should ignore .d.ts files during route discovery', () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
+
+    const controllers = app.findControllers();
+
+    const hasDeclarationFiles = controllers.some((file) => file.endsWith('.d.ts'));
+    assert.strictEqual(hasDeclarationFiles, false);
+  });
+
   it('should use custom sort function from config', () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
 
     app.config.transformPaths = (paths: string[]) => {
       return paths.toSorted((a, b) => b.localeCompare(a));
@@ -131,6 +152,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();
@@ -147,6 +169,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();

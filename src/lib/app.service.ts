@@ -18,6 +18,7 @@ import { inject, injectable, Injector, type InjectionToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 
+import { readMetadata } from '#lib.js';
 import { LatticeConfigService, type AppConfig } from '#lib/config.service.js';
 import { HTTP_SERVER } from '#lib/http.service.js';
 import { FS } from '#lib/services.js';
@@ -73,6 +74,16 @@ export class LatticeApp {
       controllerPaths.map((file) => import(file).then((m) => m.default))
     );
 
+    controllers.sort((a, b) => {
+      const metadataA = readMetadata(a);
+      const metadataB = readMetadata(b);
+
+      const weightA = metadataA?.weight ?? 0;
+      const weightB = metadataB?.weight ?? 0;
+
+      return weightA - weightB;
+    });
+
     for (const controller of controllers) {
       injector.inject(controller);
     }
@@ -84,11 +95,15 @@ export class LatticeApp {
     const { dir = process.cwd() } = this.config;
 
     const {
-      globs = [path.join(dir, '**/*.{controller,middleware}.js')],
+      globs = [path.join(dir, '**/*.{controller,middleware}.{js,ts}')],
       transformPaths = sortControllers,
     } = this.config;
 
-    const paths = globs.flatMap((glob) => fs.globSync(glob));
+    const paths = globs.flatMap((glob) =>
+      fs.globSync(glob, {
+        exclude: (entry) => entry.endsWith('.d.ts'),
+      })
+    );
 
     return transformPaths(paths);
   }

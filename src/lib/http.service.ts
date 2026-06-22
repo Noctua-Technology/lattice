@@ -25,6 +25,7 @@ export interface HttpServer {
   get(path: string, ...handlers: HttpHandler[]): unknown;
   post(path: string, ...handlers: HttpHandler[]): unknown;
   put(path: string, ...handlers: HttpHandler[]): unknown;
+  patch(path: string, ...handlers: HttpHandler[]): unknown;
   delete(path: string, ...handlers: HttpHandler[]): unknown;
   use(path: string, ...handlers: HttpHandler[]): unknown;
   listen(port: number): Promise<AddressInfo> | AddressInfo;

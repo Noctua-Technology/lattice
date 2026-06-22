@@ -20,7 +20,7 @@ import type { Context, Next } from 'hono';
 import type { AddressInfo } from 'node:net';
 import { describe, it } from 'node:test';
 
-import { controller, del, get, post, put, use, type Middleware } from '#lib/decorators.js';
+import { controller, del, get, patch, post, put, use, type Middleware } from '#lib/decorators.js';
 import { HonoService } from '#lib/hono.service.js';
 import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
 
@@ -37,6 +37,10 @@ class TestHttpServer implements HttpServer {
 
   put(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`PUT ${path}`);
+  }
+
+  patch(path: string, ..._handlers: HttpHandler[]) {
+    this.routes.push(`PATCH ${path}`);
   }
 
   delete(path: string, ..._handlers: HttpHandler[]) {
@@ -160,6 +164,33 @@ describe('decorators', () => {
 
     assert.strictEqual(res.status, 200);
     assert.deepEqual(await res.json(), { updated: true, id: 1, name: 'updated' });
+  });
+
+  it('patch', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller()
+    class Controller {
+      @patch('/test')
+      async test(ctx: Context) {
+        const body = await ctx.req.json();
+
+        return ctx.json({ patched: true, ...body });
+      }
+    }
+
+    const instance = injector.inject(Controller);
+
+    assert.instanceOf(instance, Controller);
+
+    const res = await hono.request('/test', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: 1, name: 'patched' }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { patched: true, id: 1, name: 'patched' });
   });
 
   it('del', async () => {
@@ -302,5 +333,67 @@ describe('decorators', () => {
     const res = await hono.request('/multi-mw/test');
     assert.strictEqual(res.status, 200);
     assert.deepEqual(log, ['ctrl1', 'ctrl2', 'route', 'handler']);
+  });
+
+  describe('raw response serialization', () => {
+    it('serializes a returned raw object as JSON', async () => {
+      const injector = new Injector();
+      const hono = injector.inject(HonoService);
+
+      @controller()
+      class RawController {
+        @get('/raw-json')
+        async getJson() {
+          return { data: 'hello raw object', success: true };
+        }
+      }
+
+      injector.inject(RawController);
+
+      const res = await hono.request('/raw-json');
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('content-type'), 'application/json');
+      assert.deepEqual(await res.json(), { data: 'hello raw object', success: true });
+    });
+
+    it('serializes a returned raw string as plain text', async () => {
+      const injector = new Injector();
+      const hono = injector.inject(HonoService);
+
+      @controller()
+      class RawController {
+        @get('/raw-string')
+        async getString() {
+          return 'hello raw string';
+        }
+      }
+
+      injector.inject(RawController);
+
+      const res = await hono.request('/raw-string');
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('content-type'), 'text/plain;charset=UTF-8');
+      assert.strictEqual(await res.text(), 'hello raw string');
+    });
+
+    it('serializes a returned raw number as text', async () => {
+      const injector = new Injector();
+      const hono = injector.inject(HonoService);
+
+      @controller()
+      class RawController {
+        @get('/raw-number')
+        async getNumber() {
+          return 42;
+        }
+      }
+
+      injector.inject(RawController);
+
+      const res = await hono.request('/raw-number');
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('content-type'), 'text/plain;charset=UTF-8');
+      assert.strictEqual(await res.text(), '42');
+    });
   });
 });

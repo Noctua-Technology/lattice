@@ -19,10 +19,10 @@ import type { InjectorOpts } from '@joist/di/injector.js';
 import type { Context, Next } from 'hono';
 import { join } from 'node:path';
 
-import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
+import { HTTP_SERVER, type HttpHandler } from '#lib/http.service.js';
 
 type LifeCycleCondition = Parameters<typeof created>[0];
-type RouteMethod = keyof Pick<HttpServer, 'delete' | 'get' | 'post' | 'put' | 'use'>;
+type RouteMethod = 'delete' | 'get' | 'patch' | 'post' | 'put' | 'use';
 
 const BASE_PATH = new StaticToken<string>('BASE_PATH', () => '');
 
@@ -70,7 +70,31 @@ function route(method: RouteMethod) {
           resolvedHandlers.push(instance.middleware.bind(instance));
         }
 
-        resolvedHandlers.push(target.bind(this));
+        if (method === 'use') {
+          resolvedHandlers.push(target.bind(this));
+        } else {
+          resolvedHandlers.push(async (ctx, next) => {
+            const result = await target.call(this, ctx, next);
+
+            if (result instanceof Response) {
+              return result;
+            }
+
+            if (result !== undefined && result !== null) {
+              if (typeof result === 'object') {
+                return ctx.json(result);
+              }
+
+              if (typeof result === 'string') {
+                return ctx.text(result);
+              }
+
+              return ctx.text(String(result));
+            }
+
+            return next();
+          });
+        }
 
         const routePath = join(basePath, path ?? '') as T;
         httpServer[method](routePath, ...resolvedHandlers);
@@ -83,6 +107,7 @@ export const get = route('get');
 export const post = route('post');
 export const put = route('put');
 export const del = route('delete');
+export const patch = route('patch');
 
 export function use(path: string, condition?: LifeCycleCondition): any;
 export function use(...middlewares: MiddlewareClass[]): any;
@@ -106,10 +131,29 @@ export function use(...args: any[]) {
   };
 }
 
-export function controller(path?: string, opts?: InjectorOpts) {
+interface ControllerOpts extends InjectorOpts {
+  weight?: number | undefined;
+}
+
+export function readMetadata<T>(target: object): ControllerOpts | null {
+  if (Symbol.metadata in target) {
+    const metadata = target[Symbol.metadata];
+
+    return metadata as ControllerOpts;
+  }
+
+  return null;
+}
+
+export function controller(path?: string, opts?: ControllerOpts) {
   const providers = opts?.providers ?? [];
 
-  return injectable({
-    providers: [...providers, [BASE_PATH, { factory: () => path ?? '' }]],
-  });
+  return (target: any, context: ClassDecoratorContext) => {
+    const metadata: ControllerOpts = context.metadata;
+    metadata.weight = opts?.weight;
+
+    return injectable({
+      providers: [...providers, [BASE_PATH, { factory: () => path ?? '' }]],
+    })(target, context);
+  };
 }

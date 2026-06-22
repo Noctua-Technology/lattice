@@ -22,12 +22,14 @@ import { HonoService } from '#lib/hono.service.js';
 export type HttpHandler = (...args: any[]) => unknown;
 
 export interface HttpServer {
-  get(path: string, handler: HttpHandler): unknown;
-  post(path: string, handler: HttpHandler): unknown;
-  put(path: string, handler: HttpHandler): unknown;
-  delete(path: string, handler: HttpHandler): unknown;
-  use(path: string, handler: HttpHandler): unknown;
+  get(path: string, ...handlers: HttpHandler[]): unknown;
+  post(path: string, ...handlers: HttpHandler[]): unknown;
+  put(path: string, ...handlers: HttpHandler[]): unknown;
+  patch(path: string, ...handlers: HttpHandler[]): unknown;
+  delete(path: string, ...handlers: HttpHandler[]): unknown;
+  use(path: string, ...handlers: HttpHandler[]): unknown;
   listen(port: number): Promise<AddressInfo> | AddressInfo;
+  close(): Promise<void>;
 }
 
 export const HTTP_SERVER = new StaticToken<HttpServer>('HTTP_SERVER', (injector) => {

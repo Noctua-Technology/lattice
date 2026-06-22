@@ -8,7 +8,7 @@ The Lattice framework provides a simple way to build web applications using Type
 
 ## Core Features
 
-- **Decorator-based routing** - Use `@get`, `@post`, `@use` decorators for clean route definitions
+- **Decorator-based routing** - Use `@get`, `@post`, `@put`, `@patch`, `@del`, `@use` decorators for clean route definitions
 - **Dependency injection** - Built-in DI support using `@joist/di`
 - **Automatic route registration** - Controllers are automatically discovered and registered
 - **Middleware support** - Easy middleware integration with `@use` decorator
@@ -60,6 +60,10 @@ class CustomHttpServer implements HttpServer {
 
   put(path: string, handler: HttpHandler) {
     // register PUT handler with your server
+  }
+
+  patch(path: string, handler: HttpHandler) {
+    // register PATCH handler with your server
   }
 
   delete(path: string, handler: HttpHandler) {
@@ -252,6 +256,92 @@ export default class AuthMiddleware {
   }
 }
 ```
+
+### Class-Based Middleware
+
+For reusable and type-safe middleware logic, you can define middleware classes. To do this, implement the `Middleware` interface and decorate the class with `@injectable()`:
+
+```typescript
+import { injectable } from '@joist/di';
+import { type Middleware } from '@noctuatech/lattice';
+import type { Context, Next } from 'hono';
+
+@injectable()
+export class AuthMiddleware implements Middleware {
+  async middleware(ctx: Context, next: Next) {
+    const authHeader = ctx.req.header('Authorization');
+    if (!authHeader) {
+      return ctx.json({ error: 'Unauthorized' }, 401);
+    }
+    await next();
+  }
+}
+```
+
+### Controller-Level Class Middleware
+
+You can apply class-based middleware to an entire controller using the `@use()` decorator at the class level. You can pass one or more middleware classes:
+
+```typescript
+import { controller, get, use } from '@noctuatech/lattice';
+import { AuthMiddleware } from './auth.middleware.js';
+import { LoggingMiddleware } from './logging.middleware.js';
+
+@controller('/api')
+@use(LoggingMiddleware, AuthMiddleware)
+export class ApiController {
+  @get('/data')
+  async getData(ctx: Context) {
+    return ctx.json({ data: 'secure data' });
+  }
+}
+```
+
+### Route-Level Class Middleware
+
+You can apply class-based middleware to individual route methods using the `@use()` decorator on the method. Multiple decorators are evaluated in top-to-bottom order:
+
+```typescript
+import { controller, get, use } from '@noctuatech/lattice';
+import { RateLimitMiddleware } from './rate-limit.middleware.js';
+import { AuditLogMiddleware } from './audit-log.middleware.js';
+
+@controller('/api')
+export class ApiController {
+  @get('/heavy-operation')
+  @use(RateLimitMiddleware)
+  @use(AuditLogMiddleware)
+  async heavyOp(ctx: Context) {
+    return ctx.json({ success: true });
+  }
+}
+```
+
+### Combining Middleware and Execution Order
+
+When combining controller-level and route-level middleware, they are guaranteed to execute in a precise order:
+
+1. **Controller-Level Middleware** (in the exact order specified, left-to-right, within the `@use()` decorator)
+2. **Route-Level Middleware** (in the exact order specified, top-to-bottom, of the route's `@use()` decorators)
+3. **Route Handler Method**
+
+#### Example:
+
+```typescript
+@controller('/api')
+@use(ControllerMw1, ControllerMw2)
+export class ApiController {
+  @get('/data')
+  @use(RouteMw1)
+  @use(RouteMw2)
+  async getData(ctx: Context) {
+    return ctx.json({ ok: true });
+  }
+}
+```
+
+**Execution Flow:**
+`ControllerMw1` &rarr; `ControllerMw2` &rarr; `RouteMw1` &rarr; `RouteMw2` &rarr; `getData` route handler
 
 ## Route Patterns
 

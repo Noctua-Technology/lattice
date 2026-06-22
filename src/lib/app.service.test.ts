@@ -29,23 +29,27 @@ class TestHttpServer implements HttpServer {
   listenPort?: number;
   routes: string[] = [];
 
-  get(path: string, _handler: HttpHandler) {
+  get(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`GET ${path}`);
   }
 
-  post(path: string, _handler: HttpHandler) {
+  post(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`POST ${path}`);
   }
 
-  put(path: string, _handler: HttpHandler) {
+  put(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`PUT ${path}`);
   }
 
-  delete(path: string, _handler: HttpHandler) {
+  patch(path: string, ..._handlers: HttpHandler[]) {
+    this.routes.push(`PATCH ${path}`);
+  }
+
+  delete(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`DELETE ${path}`);
   }
 
-  use(path: string, _handler: HttpHandler) {
+  use(path: string, ..._handlers: HttpHandler[]) {
     this.routes.push(`USE ${path}`);
   }
 
@@ -58,6 +62,10 @@ class TestHttpServer implements HttpServer {
       port,
     } satisfies AddressInfo);
   }
+
+  close() {
+    return Promise.resolve();
+  }
 }
 
 describe('app.service', () => {
@@ -67,6 +75,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const httpServer = injector.inject(HTTP_SERVER) as TestHttpServer;
 
     await app.registerRoutes();
@@ -88,6 +97,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
 
     const controllers = app.findControllers();
 
@@ -99,12 +109,27 @@ describe('app.service', () => {
     ]);
   });
 
+  it('should ignore .d.ts files during route discovery', () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
+
+    const controllers = app.findControllers();
+
+    const hasDeclarationFiles = controllers.some((file) => file.endsWith('.d.ts'));
+    assert.strictEqual(hasDeclarationFiles, false);
+  });
+
   it('should use custom sort function from config', () => {
     const injector = new Injector({
       providers: [[HonoService, { use: Hono }]],
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
 
     app.config.transformPaths = (paths: string[]) => {
       return paths.toSorted((a, b) => b.localeCompare(a));
@@ -127,6 +152,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();
@@ -143,6 +169,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
+    app.config.dir = import.meta.dirname;
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();
@@ -190,5 +217,43 @@ describe('app.service', () => {
       hono.routes.map((r) => `${r.method} ${r.path}`),
       ['GET /a']
     );
+  });
+
+  it('should call close on the HTTP server when LatticeApp.close is invoked', async () => {
+    let closed = false;
+    class CustomHttpServer extends TestHttpServer {
+      override close() {
+        closed = true;
+        return Promise.resolve();
+      }
+    }
+
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: CustomHttpServer }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    await app.serve({
+      dir: path.join(import.meta.dirname, '/__fixtures_does_not_exist__'),
+      port: 9091,
+    });
+
+    await app.close();
+    assert.isTrue(closed);
+  });
+
+  it('HonoService should gracefully close the server if active, or resolve if not', async () => {
+    const injector = new Injector();
+    const honoService = injector.inject(HonoService);
+
+    // Call close when not listening yet
+    await honoService.close(); // should resolve cleanly
+
+    // Listen on a random port
+    const address = await honoService.listen(0);
+    assert.isNotNull(address.port);
+
+    // Close it gracefully
+    await honoService.close();
   });
 });

@@ -265,7 +265,7 @@ describe('decorators', () => {
 
     @injectable()
     class ClassMiddleware1 implements Middleware {
-      async middleware(ctx: Context, next: Next) {
+      async middleware(_ctx: Context, next: Next) {
         log.push('class-middleware-1');
         await next();
       }
@@ -273,7 +273,7 @@ describe('decorators', () => {
 
     @injectable()
     class ClassMiddleware2 implements Middleware {
-      async middleware(ctx: Context, next: Next) {
+      async middleware(_ctx: Context, next: Next) {
         log.push('class-middleware-2');
         await next();
       }
@@ -305,7 +305,7 @@ describe('decorators', () => {
 
     @injectable()
     class ControllerMw1 implements Middleware {
-      async middleware(ctx: Context, next: Next) {
+      async middleware(_ctx: Context, next: Next) {
         log.push('ctrl1');
         await next();
       }
@@ -313,7 +313,7 @@ describe('decorators', () => {
 
     @injectable()
     class ControllerMw2 implements Middleware {
-      async middleware(ctx: Context, next: Next) {
+      async middleware(_ctx: Context, next: Next) {
         log.push('ctrl2');
         await next();
       }
@@ -321,7 +321,7 @@ describe('decorators', () => {
 
     @injectable()
     class RouteMw implements Middleware {
-      async middleware(ctx: Context, next: Next) {
+      async middleware(_ctx: Context, next: Next) {
         log.push('route');
         await next();
       }

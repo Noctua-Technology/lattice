@@ -135,7 +135,7 @@ interface ControllerOpts extends InjectorOpts {
   weight?: number | undefined;
 }
 
-export function readMetadata<T>(target: unknown): ControllerOpts | null {
+export function readMetadata(target: unknown): ControllerOpts | null {
   if (target && (typeof target === 'object' || typeof target === 'function') && Symbol.metadata in target) {
     const metadata = target[Symbol.metadata];
 

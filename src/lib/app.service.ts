@@ -17,6 +17,7 @@
 import { inject, injectable, Injector, type InjectionToken } from '@joist/di';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { readMetadata } from '#lib.js';
 import { LatticeConfigService, type AppConfig } from '#lib/config.service.js';
@@ -58,7 +59,8 @@ export class LatticeApp {
     let controller: InjectionToken<unknown>;
 
     if (typeof m === 'string') {
-      controller = await import(m).then((m) => m.default);
+      const importPath = path.isAbsolute(m) ? pathToFileURL(m).href : m;
+      controller = await import(importPath).then((m) => m.default);
     } else {
       controller = m;
     }
@@ -73,7 +75,8 @@ export class LatticeApp {
     const controllers = await Promise.all(
       controllerPaths.map(async (file) => {
         try {
-          const m = await import(file);
+          const importPath = path.isAbsolute(file) ? pathToFileURL(file).href : file;
+          const m = await import(importPath);
           if (!m || !m.default) {
             throw new Error('Module has no default export.');
           }

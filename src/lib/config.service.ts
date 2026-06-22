@@ -16,6 +16,7 @@
 
 import { inject, injectable } from '@joist/di';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 
 import { FS } from '#lib/services.js';
@@ -89,7 +90,8 @@ export class LatticeConfigService {
       return validateConfig(JSON.parse(raw), filePath);
     }
 
-    const mod = await import(filePath);
+    const importPath = path.isAbsolute(filePath) ? pathToFileURL(filePath).href : filePath;
+    const mod = await import(importPath);
 
     return validateConfig(mod.default ?? mod, filePath);
   }

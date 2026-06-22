@@ -1,9 +1,9 @@
 {
   "name": "@noctuatech/lattice",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "target/lib.js",
   "imports": {
@@ -50,10 +50,10 @@
     "zod": "^4.1.5"
   },
   "peerDependencies": {
-    "@joist/di": "^4.2.4-next.18"
+    "@joist/di": "^4.10.2"
   },
   "devDependencies": {
-    "@joist/di": "^4.2.4-next.18",
+    "@joist/di": "^4.10.2",
     "@types/chai": "^5.2.2",
     "@types/node": "^24.2.1",
     "chai": "^6.0.0",

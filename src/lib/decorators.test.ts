@@ -413,5 +413,14 @@ describe('decorators', () => {
       assert.isNull(readMetadata('string'));
       assert.isNull(readMetadata({}));
     });
+
+    it('readMetadata should successfully read the weight property from @controller metadata', () => {
+      @controller('/test-path', { weight: 15 })
+      class WeightedController {}
+
+      const metadata = readMetadata(WeightedController);
+      assert.isNotNull(metadata);
+      assert.strictEqual(metadata?.weight, 15);
+    });
   });
 });

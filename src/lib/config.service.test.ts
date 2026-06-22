@@ -91,7 +91,7 @@ describe('config.service', () => {
     const service = new Injector().inject(LatticeConfigService);
 
     const config = await service.readConfig(
-      path.join(import.meta.dirname, '/mock/lattice.config.js')
+      path.join(import.meta.dirname, '../mock/lattice.config.js')
     );
 
     assert.deepEqual(config, { port: 3000 });

@@ -77,7 +77,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
     const httpServer = injector.inject(HTTP_SERVER) as TestHttpServer;
 
     await app.registerRoutes();
@@ -99,15 +99,15 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
 
     const controllers = app.findControllers();
 
     assert.deepEqual(controllers, [
-      path.join(import.meta.dirname, '/mock/c.middleware.js'),
-      path.join(import.meta.dirname, '/mock/a.controller.js'),
-      path.join(import.meta.dirname, '/mock/b.controller.js'),
-      path.join(import.meta.dirname, '/mock/d.controller.js'),
+      path.join(import.meta.dirname, '../mock/c.middleware.js'),
+      path.join(import.meta.dirname, '../mock/a.controller.js'),
+      path.join(import.meta.dirname, '../mock/b.controller.js'),
+      path.join(import.meta.dirname, '../mock/d.controller.js'),
     ]);
   });
 
@@ -117,7 +117,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
 
     const controllers = app.findControllers();
 
@@ -131,7 +131,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
 
     app.config.transformPaths = (paths: string[]) => {
       return paths.toSorted((a, b) => b.localeCompare(a));
@@ -141,10 +141,10 @@ describe('app.service', () => {
 
     // With custom reverse alphabetical sort, expect: d.controller, c.middleware, b.controller, a.controller
     assert.deepEqual(controllers, [
-      path.join(import.meta.dirname, '/mock/d.controller.js'),
-      path.join(import.meta.dirname, '/mock/c.middleware.js'),
-      path.join(import.meta.dirname, '/mock/b.controller.js'),
-      path.join(import.meta.dirname, '/mock/a.controller.js'),
+      path.join(import.meta.dirname, '../mock/d.controller.js'),
+      path.join(import.meta.dirname, '../mock/c.middleware.js'),
+      path.join(import.meta.dirname, '../mock/b.controller.js'),
+      path.join(import.meta.dirname, '../mock/a.controller.js'),
     ]);
   });
 
@@ -154,7 +154,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();
@@ -171,7 +171,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    app.config.dir = import.meta.dirname;
+    app.config.dir = path.join(import.meta.dirname, '../mock');
     const hono = injector.inject(HonoService);
 
     await app.registerRoutes();
@@ -191,7 +191,7 @@ describe('app.service', () => {
 
     const app = injector.inject(LatticeApp);
 
-    await app.register(path.join(import.meta.dirname, '/mock/a.controller.js'));
+    await app.register(path.join(import.meta.dirname, '../mock/a.controller.js'));
 
     const hono = injector.inject(HonoService);
     assert.deepEqual(
@@ -208,7 +208,7 @@ describe('app.service', () => {
     const app = injector.inject(LatticeApp);
 
     const { default: ControllerA } = await import(
-      path.join(import.meta.dirname, '/mock/a.controller.js')
+      path.join(import.meta.dirname, '../mock/a.controller.js')
     );
 
     await app.register(ControllerA);
@@ -288,5 +288,22 @@ describe('app.service', () => {
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it('should register controllers in ascending order of their configured weights', async () => {
+    const injector = new Injector({
+      providers: [[HonoService, { use: Hono }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = path.join(import.meta.dirname, '../mock_weight');
+    const hono = injector.inject(HonoService);
+
+    await app.registerRoutes();
+
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['GET /light', 'GET /heavy']
+    );
   });
 });

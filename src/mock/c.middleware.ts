@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-import type { Context } from 'hono';
+import type { Context, Next } from 'hono';
 
-import { controller, get } from '../decorators.js';
+import { controller, use } from '#lib/decorators.js';
 
-@controller('/d')
-export default class DController {
-  @get()
-  async getMessage(ctx: Context) {
-    return ctx.json({ message: 'Controller /d' });
+@controller()
+export default class CMiddleware {
+  @use('*')
+  async addHeader(ctx: Context, next: Next) {
+    ctx.header('middleware-c', 'active');
+    await next();
   }
 }

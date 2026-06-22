@@ -16,12 +16,12 @@
 
 import type { Context } from 'hono';
 
-import { controller, get } from '../decorators.js';
+import { controller, get } from '#lib/decorators.js';
 
-@controller('/b')
-export default class BController {
+@controller('/d')
+export default class DController {
   @get()
   async getMessage(ctx: Context) {
-    return ctx.json({ message: 'Controller /b' });
+    return ctx.json({ message: 'Controller /d' });
   }
 }

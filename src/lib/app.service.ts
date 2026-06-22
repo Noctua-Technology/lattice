@@ -126,14 +126,8 @@ export class LatticeApp {
 
 function sortControllers(paths: string[]) {
   return paths.toSorted((a, b) => {
-    if (a.includes('middleware') && !b.includes('middleware')) {
-      return -1;
-    }
-
-    if (!a.includes('middleware') && b.includes('middleware')) {
-      return 1;
-    }
-
-    return 0;
+    const isMwA = a.includes('middleware');
+    const isMwB = b.includes('middleware');
+    return isMwA === isMwB ? 0 : isMwA ? -1 : 1;
   });
 }

@@ -26,6 +26,7 @@ import { describe, it } from 'node:test';
 import { LatticeApp } from '#lib/app.service.js';
 import { HonoService } from '#lib/hono.service.js';
 import { HTTP_SERVER, type HttpHandler, type HttpServer } from '#lib/http.service.js';
+import { ENV, FS } from '#lib/services.js';
 
 class TestHttpServer implements HttpServer {
   listenPort?: number;
@@ -305,5 +306,51 @@ describe('app.service', () => {
       hono.routes.map((r) => `${r.method} ${r.path}`),
       ['GET /light', 'GET /heavy']
     );
+  });
+
+  it('should resolve ENV and FS tokens with process.env and fs', () => {
+    const injector = new Injector();
+    const resolvedEnv = injector.inject(ENV);
+    const resolvedFs = injector.inject(FS);
+
+    assert.strictEqual(resolvedEnv, process.env);
+    assert.strictEqual(resolvedFs, fs);
+  });
+
+  it('should sort controllers when a.controller is matched before c.middleware', () => {
+    const mockFs = {
+      globSync: () => ['a.controller.js', 'c.middleware.js'],
+      existsSync: () => false,
+    };
+
+    const injector = new Injector({
+      providers: [
+        [FS, { factory: () => mockFs as any }],
+        [HonoService, { use: Hono }],
+      ],
+    });
+
+    const app = injector.inject(LatticeApp);
+    const controllers = app.findControllers();
+
+    // c.middleware.js should still be sorted first, proving the `!a.includes('middleware') && b.includes('middleware')` branch was hit.
+    assert.deepEqual(controllers, ['c.middleware.js', 'a.controller.js']);
+  });
+
+  it('HonoService should reject when close is called twice on an active server', async () => {
+    const injector = new Injector();
+    const honoService = injector.inject(HonoService);
+
+    await honoService.listen(0);
+    await honoService.close();
+
+    let error: any;
+    try {
+      await honoService.close();
+    } catch (err) {
+      error = err;
+    }
+    assert.isDefined(error);
+    assert.match(error.message, /Server is not running/);
   });
 });

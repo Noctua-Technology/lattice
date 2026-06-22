@@ -20,7 +20,8 @@
   ],
   "scripts": {
     "build": "wireit",
-    "test": "wireit"
+    "test": "wireit",
+    "test:coverage": "wireit"
   },
   "wireit": {
     "build": {
@@ -36,7 +37,13 @@
       ]
     },
     "test": {
-      "command": "node --enable-source-maps --test \"./target/**/*.test.js\"",
+      "command": "node --enable-source-maps --test \"./target/lib/*.test.js\"",
+      "dependencies": [
+        "build"
+      ]
+    },
+    "test:coverage": {
+      "command": "node --enable-source-maps --experimental-test-coverage --test-coverage-exclude=\"src/mock*/**\" --test \"./target/lib/*.test.js\"",
       "dependencies": [
         "build"
       ]

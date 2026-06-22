@@ -423,4 +423,62 @@ describe('decorators', () => {
       assert.strictEqual(metadata?.weight, 15);
     });
   });
+
+  it('should support route decorators without explicit paths', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller('/no-path')
+    class Controller {
+      @get()
+      async test(ctx: Context) {
+        return ctx.json({ ok: true });
+      }
+    }
+
+    injector.inject(Controller);
+
+    const res = await hono.request('/no-path');
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true });
+  });
+
+  it('should call next() and fall through when route handler returns undefined', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller()
+    class FallthroughController {
+      @get('/fallthrough')
+      async noReturn(_ctx: Context) {
+        // Return nothing (undefined) to fall through
+      }
+
+      @get('/fallthrough')
+      async nextHandler(ctx: Context) {
+        return ctx.text('fell through');
+      }
+    }
+
+    injector.inject(FallthroughController);
+
+    const res = await hono.request('/fallthrough');
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(await res.text(), 'fell through');
+  });
+
+  it('should throw an error when @use decorator is used on an unsupported target', () => {
+    class DummyMiddleware {
+      middleware() {}
+    }
+
+    assert.throws(() => {
+      @controller()
+      class TestController {
+        @use(DummyMiddleware)
+        unsupported: any = null;
+      }
+      return TestController;
+    }, /@use decorator can only be used on classes or methods/);
+  });
 });

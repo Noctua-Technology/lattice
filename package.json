@@ -61,5 +61,8 @@
     "prettier-plugin-organize-imports": "^4.2.0",
     "typescript": "^7.0.1-rc",
     "wireit": "^0.14.12"
+  },
+  "overrides": {
+    "typescript": "$typescript"
   }
 }

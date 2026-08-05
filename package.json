@@ -50,7 +50,7 @@
     }
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^2.0.0",
     "@noctuatech/result": "^1.1.0",
     "hono": "^4.6.16",
     "tslib": "^2.8.1",
@@ -66,10 +66,13 @@
     "chai": "^6.0.0",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
-    "typescript": "^7.0.1-rc",
+    "typescript": "^7.0.2",
     "wireit": "^0.14.12"
   },
   "overrides": {
     "typescript": "$typescript"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
   }
 }

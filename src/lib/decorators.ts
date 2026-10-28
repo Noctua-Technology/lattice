@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import { StaticToken, created, injectable } from '@joist/di';
-import type { InjectorOpts } from '@joist/di/injector.js';
+import { StaticToken, created, injectable, type InjectorOpts } from '@joist/di';
 import type { Context, Next } from 'hono';
 import { posix } from 'node:path';
 
@@ -136,7 +135,11 @@ interface ControllerOpts extends InjectorOpts {
 }
 
 export function readMetadata(target: unknown): ControllerOpts | null {
-  if (target && (typeof target === 'object' || typeof target === 'function') && Symbol.metadata in target) {
+  if (
+    target &&
+    (typeof target === 'object' || typeof target === 'function') &&
+    Symbol.metadata in target
+  ) {
     const metadata = target[Symbol.metadata];
 
     return metadata as ControllerOpts;

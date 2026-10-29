@@ -39,9 +39,9 @@ export class LatticeApp {
     const configService = this.#config();
     const httpServer = this.#httpServer();
 
-    const loadedConfig = await configService.load(config.dir);
+    const loadedConfig = await configService.load(config.dir ?? this.config.dir);
 
-    this.config = { ...config, ...loadedConfig };
+    this.config = { ...loadedConfig, ...this.config, ...config };
 
     await this.registerRoutes();
 

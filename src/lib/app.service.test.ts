@@ -263,7 +263,7 @@ describe('app.service', () => {
   it('should throw a descriptive error when a controller has no default export', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-loader-test-'));
     const invalidControllerPath = path.join(tempDir, 'invalid.controller.js');
-    
+
     // Write a file with no default export
     fs.writeFileSync(invalidControllerPath, 'export const foo = "bar";');
 
@@ -274,7 +274,7 @@ describe('app.service', () => {
 
       const app = injector.inject(LatticeApp);
       app.config.dir = tempDir;
-      
+
       let error: any;
       try {
         await app.registerRoutes();
@@ -352,5 +352,39 @@ describe('app.service', () => {
     }
     assert.isDefined(error);
     assert.match(error.message, /Server is not running/);
+  });
+
+  it('should give precedence to programmatic config over loaded config in serve', async () => {
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: TestHttpServer }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    const httpServer = injector.inject(HTTP_SERVER) as TestHttpServer;
+
+    // mock/lattice.config.js specifies port: 3000
+    await app.serve({
+      dir: path.join(import.meta.dirname, '../mock'),
+      port: 9090,
+    });
+
+    assert.strictEqual(app.config.port, 9090);
+    assert.strictEqual(httpServer.listenPort, 9090);
+  });
+
+  it('should preserve pre-configured app.config properties when serve is called', async () => {
+    const injector = new Injector({
+      providers: [[HTTP_SERVER, { use: TestHttpServer }]],
+    });
+
+    const app = injector.inject(LatticeApp);
+    app.config.globs = ['custom-glob'];
+
+    await app.serve({
+      dir: path.join(import.meta.dirname, '/__fixtures_does_not_exist__'),
+      port: 9090,
+    });
+
+    assert.deepEqual(app.config.globs, ['custom-glob']);
   });
 });

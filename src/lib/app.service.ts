@@ -70,7 +70,7 @@ export class LatticeApp {
 
   async registerRoutes() {
     const injector = this.#injector();
-    const controllerPaths = this.findControllers();
+    const controllerPaths = await this.findControllers();
 
     const controllers = await Promise.all(
       controllerPaths.map(async (file) => {
@@ -119,7 +119,7 @@ export class LatticeApp {
     }
   }
 
-  findControllers(): string[] {
+  async findControllers(): Promise<string[]> {
     const fs = this.#fs();
 
     const { dir = process.cwd() } = this.config;
@@ -130,15 +130,22 @@ export class LatticeApp {
       transformPaths = sortControllers,
     } = this.config;
 
-    const rawPaths = globs.flatMap((glob) =>
-      fs.globSync(glob, {
+    const rawPaths: string[] = [];
+
+    for (const glob of globs) {
+      const entries = fs.glob(glob, {
         exclude: (entry) =>
           entry.endsWith('.d.ts') || entry.split(/[\\/]/).includes('node_modules'),
-      })
-    );
+      });
+
+      for await (const filePath of entries) {
+        rawPaths.push(filePath);
+      }
+    }
 
     const fileMap = new Map<string, string>();
-    for (const filePath of rawPaths) {
+
+    for await (const filePath of rawPaths) {
       const key = getModuleKey(filePath);
       const existing = fileMap.get(key);
 

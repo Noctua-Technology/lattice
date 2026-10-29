@@ -15,7 +15,7 @@
  */
 
 import { StaticToken } from '@joist/di';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 
 export const ENV = new StaticToken('process.env', () => process.env);
-export const FS = new StaticToken('node:fs', () => fs);
+export const FS = new StaticToken('node:fs/promises', () => fs);

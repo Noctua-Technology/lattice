@@ -55,7 +55,7 @@ export class LatticeConfigService {
    * the directory tree. Returns the resolved path to the first config file
    * found, or `null` if none exists.
    */
-  findConfigFile(dir: string = process.cwd()): string | null {
+  async findConfigFile(dir: string = process.cwd()): Promise<string | null> {
     const fs = this.#fs();
     let current = path.resolve(dir);
 
@@ -63,9 +63,11 @@ export class LatticeConfigService {
       for (const name of CONFIG_FILE_NAMES) {
         const candidate = path.join(current, name);
 
-        if (fs.existsSync(candidate)) {
+        try {
+          await fs.access(candidate, fs.constants.F_OK);
+
           return candidate;
-        }
+        } catch {}
       }
 
       const parent = path.dirname(current);
@@ -85,7 +87,7 @@ export class LatticeConfigService {
   async readConfig(filePath: string): Promise<AppConfig> {
     if (filePath.endsWith('.json')) {
       const fs = this.#fs();
-      const raw = fs.readFileSync(filePath, 'utf-8');
+      const raw = await fs.readFile(filePath, 'utf-8');
 
       return validateConfig(JSON.parse(raw), filePath);
     }
@@ -101,7 +103,7 @@ export class LatticeConfigService {
    * contents, or an empty object if no config file is found.
    */
   async load(dir: string = process.cwd()): Promise<AppConfig> {
-    const configPath = this.findConfigFile(dir);
+    const configPath = await this.findConfigFile(dir);
 
     if (!configPath) {
       return {};

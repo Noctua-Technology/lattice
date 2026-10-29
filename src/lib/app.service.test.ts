@@ -16,7 +16,7 @@
 
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -93,13 +93,13 @@ describe('app.service', () => {
     assert.strictEqual(address.port, 9090);
   });
 
-  it('should find controllers and sort them so that all middleware are registered first', () => {
+  it('should find controllers and sort them so that all middleware are registered first', async () => {
     const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
 
-    const controllers = app.findControllers();
+    const controllers = await app.findControllers();
 
     assert.deepEqual(controllers, [
       path.join(import.meta.dirname, '../mock/c.middleware.js'),
@@ -109,19 +109,19 @@ describe('app.service', () => {
     ]);
   });
 
-  it('should ignore .d.ts files during route discovery', () => {
+  it('should ignore .d.ts files during route discovery', async () => {
     const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
 
-    const controllers = app.findControllers();
+    const controllers = await app.findControllers();
 
     const hasDeclarationFiles = controllers.some((file) => file.endsWith('.d.ts'));
     assert.strictEqual(hasDeclarationFiles, false);
   });
 
-  it('should use custom sort function from config', () => {
+  it('should use custom sort function from config', async () => {
     const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
@@ -131,7 +131,7 @@ describe('app.service', () => {
       return paths.toSorted((a, b) => b.localeCompare(a));
     };
 
-    const controllers = app.findControllers();
+    const controllers = await app.findControllers();
 
     // With custom reverse alphabetical sort, expect: d.controller, c.middleware, b.controller, a.controller
     assert.deepEqual(controllers, [
@@ -246,32 +246,30 @@ describe('app.service', () => {
   });
 
   it('should throw a descriptive error when a controller has no default export', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-loader-test-'));
-    const invalidControllerPath = path.join(tempDir, 'invalid.controller.js');
+    await using tempDir = await fs.mkdtempDisposable(
+      path.join(os.tmpdir(), 'lattice-loader-test-')
+    );
+    const invalidControllerPath = path.join(tempDir.path, 'invalid.controller.js');
 
     // Write a file with no default export
-    fs.writeFileSync(invalidControllerPath, 'export const foo = "bar";');
+    await fs.writeFile(invalidControllerPath, 'export const foo = "bar";');
 
+    const injector = new Injector();
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = tempDir.path;
+
+    let error: any;
     try {
-      const injector = new Injector();
-
-      const app = injector.inject(LatticeApp);
-      app.config.dir = tempDir;
-
-      let error: any;
-      try {
-        await app.registerRoutes();
-      } catch (err: any) {
-        error = err;
-      }
-
-      assert.isDefined(error);
-      assert.instanceOf(error, Error);
-      assert.match(error.message, /Failed to load controller or middleware at/);
-      assert.match(error.message, /Module has no default export/);
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      await app.registerRoutes();
+    } catch (err: any) {
+      error = err;
     }
+
+    assert.isDefined(error);
+    assert.instanceOf(error, Error);
+    assert.match(error.message, /Failed to load controller or middleware at/);
+    assert.match(error.message, /Module has no default export/);
   });
 
   it('should register controllers in ascending order of their configured weights', async () => {
@@ -298,10 +296,13 @@ describe('app.service', () => {
     assert.strictEqual(resolvedFs, fs);
   });
 
-  it('should sort controllers when a.controller is matched before c.middleware', () => {
+  it('should sort controllers when a.controller is matched before c.middleware', async () => {
     const mockFs = {
-      globSync: () => ['a.controller.js', 'c.middleware.js'],
-      existsSync: () => false,
+      // Mock the async iterator returned by node:fs/promises glob
+      glob: async function* () {
+        yield 'a.controller.js';
+        yield 'c.middleware.js';
+      },
     };
 
     const injector = new Injector({
@@ -309,7 +310,7 @@ describe('app.service', () => {
     });
 
     const app = injector.inject(LatticeApp);
-    const controllers = app.findControllers();
+    const controllers = await app.findControllers();
 
     // c.middleware.js should still be sorted first, proving the `!a.includes('middleware') && b.includes('middleware')` branch was hit.
     assert.deepEqual(controllers, ['c.middleware.js', 'a.controller.js']);
@@ -366,72 +367,78 @@ describe('app.service', () => {
     assert.deepEqual(app.config.globs, ['custom-glob']);
   });
 
-  it('should deduplicate .js and .ts files preferring .js', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-dedup-test-'));
-    try {
-      fs.writeFileSync(path.join(tempDir, 'item.controller.ts'), 'export default class ItemTs {}');
-      fs.writeFileSync(path.join(tempDir, 'item.controller.js'), 'export default class ItemJs {}');
+  it('should deduplicate .js and .ts files preferring .js', async () => {
+    await using tempDir = await fs.mkdtempDisposable(path.join(os.tmpdir(), 'lattice-dedup-test-'));
 
-      const injector = new Injector();
+    await fs.writeFile(
+      path.join(tempDir.path, 'item.controller.ts'),
+      'export default class ItemTs {}'
+    );
+    await fs.writeFile(
+      path.join(tempDir.path, 'item.controller.js'),
+      'export default class ItemJs {}'
+    );
 
-      const app = injector.inject(LatticeApp);
-      app.config.dir = tempDir;
+    const injector = new Injector();
 
-      const controllers = app.findControllers();
-      assert.strictEqual(controllers.length, 1);
-      assert.strictEqual(controllers[0], path.join(tempDir, 'item.controller.js'));
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    const app = injector.inject(LatticeApp);
+    app.config.dir = tempDir.path;
+
+    const controllers = await app.findControllers();
+    assert.strictEqual(controllers.length, 1);
+    assert.strictEqual(controllers[0], path.join(tempDir.path, 'item.controller.js'));
   });
 
-  it('should ignore files inside node_modules during route discovery', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-nodemodules-test-'));
-    try {
-      const nmDir = path.join(tempDir, 'node_modules', 'dep');
-      fs.mkdirSync(nmDir, { recursive: true });
-      fs.writeFileSync(path.join(nmDir, 'dep.controller.js'), 'export default class DepCtrl {}');
-      fs.writeFileSync(path.join(tempDir, 'app.controller.js'), 'export default class AppCtrl {}');
+  it('should ignore files inside node_modules during route discovery', async () => {
+    await using tempDir = await fs.mkdtempDisposable(
+      path.join(os.tmpdir(), 'lattice-nodemodules-test-')
+    );
 
-      const injector = new Injector();
+    const nmDir = path.join(tempDir.path, 'node_modules', 'dep');
 
-      const app = injector.inject(LatticeApp);
-      app.config.dir = tempDir;
+    await fs.mkdir(nmDir, { recursive: true });
+    await fs.writeFile(path.join(nmDir, 'dep.controller.js'), 'export default class DepCtrl {}');
+    await fs.writeFile(
+      path.join(tempDir.path, 'app.controller.js'),
+      'export default class AppCtrl {}'
+    );
 
-      const controllers = app.findControllers();
-      assert.deepEqual(controllers, [path.join(tempDir, 'app.controller.js')]);
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    const injector = new Injector();
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = tempDir.path;
+
+    const controllers = await app.findControllers();
+
+    assert.deepEqual(controllers, [path.join(tempDir.path, 'app.controller.js')]);
   });
 
   it('should provide actionable error when loading .ts file without a loader', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-ts-error-test-'));
+    await using tempDir = await fs.mkdtempDisposable(
+      path.join(os.tmpdir(), 'lattice-ts-error-test-')
+    );
+
+    // Writing a TS file with decorator syntax that Node ESM cannot parse natively
+    await fs.writeFile(
+      path.join(tempDir.path, 'syntax.controller.ts'),
+      '@controller()\nexport default class SyntaxController {}'
+    );
+
+    const injector = new Injector();
+
+    const app = injector.inject(LatticeApp);
+    app.config.dir = tempDir.path;
+
+    let error: any;
     try {
-      // Writing a TS file with decorator syntax that Node ESM cannot parse natively
-      fs.writeFileSync(
-        path.join(tempDir, 'syntax.controller.ts'),
-        '@controller()\nexport default class SyntaxController {}'
-      );
-
-      const injector = new Injector();
-
-      const app = injector.inject(LatticeApp);
-      app.config.dir = tempDir;
-
-      let error: any;
-      try {
-        await app.registerRoutes();
-      } catch (err: any) {
-        error = err;
-      }
-
-      assert.isDefined(error);
-      assert.instanceOf(error, Error);
-      assert.match(error.message, /Direct execution of \.ts files requires a loader/);
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      await app.registerRoutes();
+    } catch (err: any) {
+      error = err;
     }
+
+    assert.isDefined(error);
+    assert.instanceOf(error, Error);
+    assert.match(error.message, /Direct execution of \.ts files requires a loader/);
   });
 
   it('should register middleware before controllers even when a controller has negative weight', async () => {

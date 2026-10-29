@@ -16,7 +16,6 @@
 
 import { Injector } from '@joist/di';
 import { assert } from 'chai';
-import { Hono } from 'hono';
 import fs from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
@@ -95,9 +94,7 @@ describe('app.service', () => {
   });
 
   it('should find controllers and sort them so that all middleware are registered first', () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
@@ -113,9 +110,7 @@ describe('app.service', () => {
   });
 
   it('should ignore .d.ts files during route discovery', () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
@@ -127,9 +122,7 @@ describe('app.service', () => {
   });
 
   it('should use custom sort function from config', () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
@@ -150,9 +143,7 @@ describe('app.service', () => {
   });
 
   it('should register controllers and middleware', async () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
@@ -167,9 +158,7 @@ describe('app.service', () => {
   });
 
   it('should handle HTTP requests with correct responses and headers', async () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock');
@@ -186,9 +175,7 @@ describe('app.service', () => {
   });
 
   it('should register a controller from a string path', async () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
 
@@ -202,9 +189,7 @@ describe('app.service', () => {
   });
 
   it('should register a controller from an InjectionToken', async () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
 
@@ -268,9 +253,7 @@ describe('app.service', () => {
     fs.writeFileSync(invalidControllerPath, 'export const foo = "bar";');
 
     try {
-      const injector = new Injector({
-        providers: [[HonoService, { use: Hono }]],
-      });
+      const injector = new Injector();
 
       const app = injector.inject(LatticeApp);
       app.config.dir = tempDir;
@@ -292,9 +275,7 @@ describe('app.service', () => {
   });
 
   it('should register controllers in ascending order of their configured weights', async () => {
-    const injector = new Injector({
-      providers: [[HonoService, { use: Hono }]],
-    });
+    const injector = new Injector();
 
     const app = injector.inject(LatticeApp);
     app.config.dir = path.join(import.meta.dirname, '../mock_weight');
@@ -324,10 +305,7 @@ describe('app.service', () => {
     };
 
     const injector = new Injector({
-      providers: [
-        [FS, { factory: () => mockFs as any }],
-        [HonoService, { use: Hono }],
-      ],
+      providers: [[FS, { factory: () => mockFs as any }]],
     });
 
     const app = injector.inject(LatticeApp);
@@ -386,5 +364,96 @@ describe('app.service', () => {
     });
 
     assert.deepEqual(app.config.globs, ['custom-glob']);
+  });
+
+  it('should deduplicate .js and .ts files preferring .js', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-dedup-test-'));
+    try {
+      fs.writeFileSync(path.join(tempDir, 'item.controller.ts'), 'export default class ItemTs {}');
+      fs.writeFileSync(path.join(tempDir, 'item.controller.js'), 'export default class ItemJs {}');
+
+      const injector = new Injector();
+
+      const app = injector.inject(LatticeApp);
+      app.config.dir = tempDir;
+
+      const controllers = app.findControllers();
+      assert.strictEqual(controllers.length, 1);
+      assert.strictEqual(controllers[0], path.join(tempDir, 'item.controller.js'));
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should ignore files inside node_modules during route discovery', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-nodemodules-test-'));
+    try {
+      const nmDir = path.join(tempDir, 'node_modules', 'dep');
+      fs.mkdirSync(nmDir, { recursive: true });
+      fs.writeFileSync(path.join(nmDir, 'dep.controller.js'), 'export default class DepCtrl {}');
+      fs.writeFileSync(path.join(tempDir, 'app.controller.js'), 'export default class AppCtrl {}');
+
+      const injector = new Injector();
+
+      const app = injector.inject(LatticeApp);
+      app.config.dir = tempDir;
+
+      const controllers = app.findControllers();
+      assert.deepEqual(controllers, [path.join(tempDir, 'app.controller.js')]);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should provide actionable error when loading .ts file without a loader', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-ts-error-test-'));
+    try {
+      // Writing a TS file with decorator syntax that Node ESM cannot parse natively
+      fs.writeFileSync(
+        path.join(tempDir, 'syntax.controller.ts'),
+        '@controller()\nexport default class SyntaxController {}'
+      );
+
+      const injector = new Injector();
+
+      const app = injector.inject(LatticeApp);
+      app.config.dir = tempDir;
+
+      let error: any;
+      try {
+        await app.registerRoutes();
+      } catch (err: any) {
+        error = err;
+      }
+
+      assert.isDefined(error);
+      assert.instanceOf(error, Error);
+      assert.match(error.message, /Direct execution of \.ts files requires a loader/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should register middleware before controllers even when a controller has negative weight', async () => {
+    const injector = new Injector();
+
+    const app = injector.inject(LatticeApp);
+    // Globs including c.middleware.js and light.controller.js (which has weight: -10)
+    app.config.globs = [
+      path.join(import.meta.dirname, '../mock/c.middleware.js'),
+      path.join(import.meta.dirname, '../mock_weight/light.controller.js'),
+    ];
+
+    const hono = injector.inject(HonoService);
+    await app.registerRoutes();
+
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['ALL /*', 'GET /light']
+    );
+
+    const res = await hono.request('/light');
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get('middleware-c'), 'active');
   });
 });

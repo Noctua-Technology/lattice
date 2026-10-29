@@ -95,8 +95,14 @@ function route(method: RouteMethod) {
           });
         }
 
-        const routePath = posix.join(basePath, path ?? '') as T;
-        httpServer[method](routePath, ...resolvedHandlers);
+        let routePath = posix.join(basePath, path ?? '');
+        if (!routePath || routePath === '.') {
+          routePath = '/';
+        } else if (!routePath.startsWith('/') && routePath !== '*') {
+          routePath = '/' + routePath;
+        }
+
+        httpServer[method](routePath as T, ...resolvedHandlers);
       }, ctx);
     };
   };

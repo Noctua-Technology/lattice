@@ -80,9 +80,17 @@ export class LatticeApp {
           if (!m || !m.default) {
             throw new Error('Module has no default export.');
           }
-          return m.default;
+          return { file, module: m.default };
         } catch (err: any) {
-          throw new Error(`Failed to load controller or middleware at "${file}": ${err.message}`, {
+          const isTsSyntaxError =
+            file.endsWith('.ts') &&
+            (err instanceof SyntaxError || err?.cause instanceof SyntaxError);
+
+          const message = isTsSyntaxError
+            ? `Failed to load TypeScript file "${file}". Direct execution of .ts files requires a loader (e.g. tsx or ts-node): ${err.message}`
+            : `Failed to load controller or middleware at "${file}": ${err.message}`;
+
+          throw new Error(message, {
             cause: err,
           });
         }
@@ -90,8 +98,15 @@ export class LatticeApp {
     );
 
     controllers.sort((a, b) => {
-      const metadataA = readMetadata(a);
-      const metadataB = readMetadata(b);
+      const isMwA = a.file.includes('middleware');
+      const isMwB = b.file.includes('middleware');
+
+      if (isMwA !== isMwB) {
+        return isMwA ? -1 : 1;
+      }
+
+      const metadataA = readMetadata(a.module);
+      const metadataB = readMetadata(b.module);
 
       const weightA = metadataA?.weight ?? 0;
       const weightB = metadataB?.weight ?? 0;
@@ -100,7 +115,7 @@ export class LatticeApp {
     });
 
     for (const controller of controllers) {
-      injector.inject(controller);
+      injector.inject(controller.module);
     }
   }
 
@@ -108,20 +123,37 @@ export class LatticeApp {
     const fs = this.#fs();
 
     const { dir = process.cwd() } = this.config;
+    const normalizedDir = dir.replaceAll('\\', '/');
 
     const {
-      globs = [path.join(dir, '**/*.{controller,middleware}.{js,ts}')],
+      globs = [path.posix.join(normalizedDir, '**/*.{controller,middleware}.{js,ts}')],
       transformPaths = sortControllers,
     } = this.config;
 
-    const paths = globs.flatMap((glob) =>
+    const rawPaths = globs.flatMap((glob) =>
       fs.globSync(glob, {
-        exclude: (entry) => entry.endsWith('.d.ts'),
+        exclude: (entry) =>
+          entry.endsWith('.d.ts') || entry.split(/[\\/]/).includes('node_modules'),
       })
     );
 
-    return transformPaths(paths);
+    const fileMap = new Map<string, string>();
+    for (const filePath of rawPaths) {
+      const key = getModuleKey(filePath);
+      const existing = fileMap.get(key);
+
+      if (!existing || filePath.endsWith('.js')) {
+        fileMap.set(key, filePath);
+      }
+    }
+
+    return transformPaths(Array.from(fileMap.values()));
   }
+}
+
+function getModuleKey(filePath: string): string {
+  const normPath = filePath.replaceAll('\\', '/');
+  return normPath.replace(/\.(js|ts)$/, '');
 }
 
 function sortControllers(paths: string[]) {

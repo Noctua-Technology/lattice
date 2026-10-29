@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Injector, injectable } from '@joist/di';
+import { Injector, StaticToken, inject, injectable } from '@joist/di';
 import { assert } from 'chai';
 import type { Context, Next } from 'hono';
 import type { AddressInfo } from 'node:net';
@@ -422,6 +422,30 @@ describe('decorators', () => {
       assert.isNotNull(metadata);
       assert.strictEqual(metadata?.weight, 15);
     });
+
+    it('should support scoped providers in @controller options', async () => {
+      const CUSTOM_TOKEN = new StaticToken<string>('CUSTOM_TOKEN', () => 'default');
+
+      @controller('/scoped', {
+        providers: [[CUSTOM_TOKEN, { factory: () => 'scoped-value' }]],
+      })
+      class ScopedController {
+        val = inject(CUSTOM_TOKEN);
+
+        @get('/value')
+        getValue(ctx: Context) {
+          return ctx.text(this.val());
+        }
+      }
+
+      const injector = new Injector();
+      const hono = injector.inject(HonoService);
+      injector.inject(ScopedController);
+
+      const res = await hono.request('/scoped/value');
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(await res.text(), 'scoped-value');
+    });
   });
 
   it('should support route decorators without explicit paths', async () => {
@@ -441,6 +465,54 @@ describe('decorators', () => {
     const res = await hono.request('/no-path');
     assert.strictEqual(res.status, 200);
     assert.deepEqual(await res.json(), { ok: true });
+  });
+
+  it('should support root route when both controller and route decorator omit paths', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller()
+    class RootController {
+      @get()
+      async index(ctx: Context) {
+        return ctx.json({ root: true });
+      }
+    }
+
+    injector.inject(RootController);
+
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['GET /']
+    );
+
+    const res = await hono.request('/');
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { root: true });
+  });
+
+  it('should prefix route with / when leading slash is omitted', async () => {
+    const injector = new Injector();
+    const hono = injector.inject(HonoService);
+
+    @controller('api')
+    class UnslashedController {
+      @get('items')
+      async list(ctx: Context) {
+        return ctx.json({ items: [1, 2, 3] });
+      }
+    }
+
+    injector.inject(UnslashedController);
+
+    assert.deepEqual(
+      hono.routes.map((r) => `${r.method} ${r.path}`),
+      ['GET /api/items']
+    );
+
+    const res = await hono.request('/api/items');
+    assert.strictEqual(res.status, 200);
+    assert.deepEqual(await res.json(), { items: [1, 2, 3] });
   });
 
   it('should call next() and fall through when route handler returns undefined', async () => {

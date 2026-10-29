@@ -215,6 +215,13 @@ describe('config.service', () => {
     assert.deepEqual(await service.load(tmpDir.path), {});
   });
 
+  it('load should use process.cwd() as default directory when omitted', async () => {
+    const service = new Injector().inject(LatticeConfigService);
+    const config = await service.load();
+
+    assert.isObject(config);
+  });
+
   it('load should find and parse a config file', async () => {
     using tmpDir = new TempDir();
 
